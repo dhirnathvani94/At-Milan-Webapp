@@ -73,8 +73,8 @@ export default function ProtectedRoute() {
   // No authenticated user — redirect to login
   if (!user) return <Navigate to="/login" replace />
 
-  // Admin bypasses approval check — guard against null/undefined profile safely
-  if (profile != null && profile.role === 'admin') return <Outlet />
+  // Admin bypasses approval check — role comes from JWT/login, not from profile object
+  if (user?.role === 'admin') return <Outlet />
 
   // Profile not yet approved by admin — send to waiting page
   // Treat missing is_verified field as false (profile may be partially loaded)

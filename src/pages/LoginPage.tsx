@@ -51,9 +51,10 @@ export default function LoginPage() {
       
       const authStore = useAuthStore.getState()
       const profile = authStore.profile
+      const user = authStore.user
       
       toast.success(`Welcome back, ${profile?.first_name || 'User'}! 👋`)
-      if (profile?.role === 'admin') {
+      if (user?.role === 'admin') {
         navigate('/admin')
       } else {
         // Check if profile is blocked — navigate to reactivation page
@@ -86,9 +87,10 @@ export default function LoginPage() {
       
       const authStore = useAuthStore.getState()
       const profile = authStore.profile
+      const user = authStore.user
       
       toast.success(`Welcome back, ${profile?.first_name || 'User'}! 👋`)
-      if (profile?.role === 'admin') {
+      if (user?.role === 'admin') {
         navigate('/admin')
       } else {
         // Check if profile is blocked — navigate to reactivation page

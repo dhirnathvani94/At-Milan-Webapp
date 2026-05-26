@@ -89,6 +89,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       set({ profile })
+
+      // If the API response includes a user object with role,
+      // update user.role in the auth store to stay consistent.
+      // Backend shape: { success, user: { id, email, role }, profile: {...} }
+      if (raw.user && typeof raw.user.role === 'string' && raw.user.role) {
+        set((state) => ({
+          user: state.user ? { ...state.user, role: raw.user.role } : state.user,
+        }))
+      }
     } catch (error) {
       console.error('Error fetching profile:', error)
       set({ profile: null })
