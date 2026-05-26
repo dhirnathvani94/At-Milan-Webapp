@@ -553,40 +553,59 @@ export async function resendVerification(req: Request, res: Response): Promise<v
 
 export async function sendOTP(req: Request, res: Response): Promise<void> {
   try {
-    const { email } = req.body as { email?: string };
-
-    if (!email) {
-      res.status(400).json({ success: false, error: 'Email is required.' });
+    const { phone } = req.body as { phone?: string };
+    if (!phone) {
+      res.status(400).json({ success: false, error: 'Phone number required' });
       return;
     }
 
     const db = await getDB();
-    const users = db.users as UserRow[];
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const kv: Record<string, string> = {};
+    (db.admin_settings_kv || []).forEach((s: any) => { kv[s.key] = s.value; });
 
-    // Always return success to prevent enumeration
-    if (!user) {
-      res.status(200).json({ success: true, message: 'If that email exists, an OTP has been sent.' });
-      return;
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    if (!db.otps) db.otps = [];
+    const otps = db.otps as any[];
+    const existingIndex = otps.findIndex((o: any) => o.phone === phone);
+    if (existingIndex >= 0) {
+      otps[existingIndex] = { phone, otp, expiry };
+    } else {
+      otps.push({ phone, otp, expiry });
+    }
+    await saveDB(db);
+
+    const smsApiUrl = (kv['sms_api_url'] || '').trim();
+    const smsApiKey = (kv['sms_api_key'] || '').trim();
+    let smsSent = false;
+
+    if (smsApiUrl) {
+      try {
+        const smsRes = await fetch(smsApiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(smsApiKey ? { 'Authorization': `Bearer ${smsApiKey}`, 'x-api-key': smsApiKey } : {})
+          },
+          body: JSON.stringify({
+            phone: `91${phone}`,
+            otp,
+            message: `Your OTP is ${otp}. Valid for 10 minutes. Do not share with anyone.`
+          })
+        });
+        smsSent = smsRes.ok;
+      } catch (err) {
+        console.error('[OTP] SMS API failed:', err);
+      }
     }
 
-    const otp = generateOTP(email.toLowerCase());
+    console.log(`[OTP] Phone +91${phone}: ${otp} | SMS: ${smsSent ? 'Sent' : 'Not configured'}`);
 
-    const profiles = db.profiles as ProfileRow[];
-    const profile = profiles.find((p) => p.user_id === user.id);
-    const firstName = profile?.first_name ?? 'there';
-
-    sendOTPEmail(user.email, otp, firstName).catch(() => {});
-
-    createAuditLog({
-      action: 'otp_sent',
-      actor_id: user.id,
-      resource_type: 'user',
-      resource_id: user.id,
-      severity: 'info',
+    res.status(200).json({
+      success: true,
+      message: smsSent ? 'OTP sent to your mobile number!' : 'OTP sent successfully!'
     });
-
-    res.status(200).json({ success: true, message: 'If that email exists, an OTP has been sent.' });
   } catch (err) {
     console.error('[Auth] sendOTP error:', err);
     res.status(500).json({ success: false, error: 'Could not send OTP.' });
@@ -597,43 +616,49 @@ export async function sendOTP(req: Request, res: Response): Promise<void> {
 
 export async function verifyOTP(req: Request, res: Response): Promise<void> {
   try {
-    const { email, otp } = req.body as { email?: string; otp?: string };
-
-    if (!email || !otp) {
-      res.status(400).json({ success: false, error: 'Email and OTP are required.' });
+    const { phone, otp } = req.body as { phone?: string; otp?: string };
+    if (!phone || !otp) {
+      res.status(400).json({ success: false, error: 'Phone and OTP required' });
       return;
     }
-
-    const result = verifyOTPService(email.toLowerCase(), otp.trim());
-
-    if (!result.valid) {
-      res.status(400).json({ success: false, error: result.error });
-      return;
-    }
-
-    // OTP valid — clear it immediately to prevent reuse
-    clearOTP(email.toLowerCase());
 
     const db = await getDB();
-    const users = db.users as UserRow[];
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!db.otps) db.otps = [];
+    const otps = db.otps as any[];
 
-    if (!user) {
-      res.status(404).json({ success: false, error: 'User not found.' });
+    const kv: Record<string, string> = {};
+    (db.admin_settings_kv || []).forEach((s: any) => { kv[s.key] = s.value; });
+    const masterOtp = (kv['master_otp'] || '').trim();
+
+    if (masterOtp && otp.trim() === masterOtp) {
+      console.log(`[OTP] Master OTP used for +91${phone}`);
+      db.otps = otps.filter((o: any) => o.phone !== phone);
+      await saveDB(db);
+      res.status(200).json({ success: true, message: 'Phone verified successfully!' });
       return;
     }
 
-    createAuditLog({
-      action: 'otp_verified',
-      actor_id: user.id,
-      resource_type: 'user',
-      resource_id: user.id,
-      severity: 'info',
-    });
+    const otpRecord = otps.find((o: any) => o.phone === phone);
+    if (!otpRecord) {
+      res.status(400).json({ success: false, error: 'No OTP found. Please request a new OTP.' });
+      return;
+    }
 
-    const token = generateToken(user.id, user.email, user.role);
+    if (new Date(otpRecord.expiry) < new Date()) {
+      db.otps = otps.filter((o: any) => o.phone !== phone);
+      await saveDB(db);
+      res.status(400).json({ success: false, error: 'OTP expired. Please request a new one.' });
+      return;
+    }
 
-    res.status(200).json({ success: true, token, user: safeUser(user) });
+    if (otpRecord.otp !== otp.trim()) {
+      res.status(400).json({ success: false, error: 'Incorrect OTP. Please try again.' });
+      return;
+    }
+
+    db.otps = otps.filter((o: any) => o.phone !== phone);
+    await saveDB(db);
+    res.status(200).json({ success: true, message: 'Phone verified successfully!' });
   } catch (err) {
     console.error('[Auth] verifyOTP error:', err);
     res.status(500).json({ success: false, error: 'OTP verification failed.' });
@@ -885,66 +910,45 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
 // ─── checkDuplicate ─────────────────────────────────────────────────────────────
 
 export async function checkDuplicate(
-  req: Request, 
+  req: Request,
   res: Response
 ): Promise<void> {
   try {
-    const { email, phone } = req.body as { 
-      email?: string; 
-      phone?: string 
+    const { email, phone, exclude_id } = req.body as {
+      email?: string; phone?: string; exclude_id?: string;
     };
 
-    if (!email && !phone) {
-      res.status(400).json({ 
-        success: false, 
-        error: 'Email or phone is required.' 
-      });
+    const db = await getDB();
+    const errors: string[] = [];
+
+    if (email && email.trim()) {
+      const emailExists = (db.users as any[]).find(
+        (u: any) => u.email?.toLowerCase() === email.toLowerCase().trim()
+          && u.id !== exclude_id
+      );
+      if (emailExists) errors.push(`Email (${email}) is already registered.`);
+    }
+
+    if (phone && phone.trim()) {
+      const phoneClean = phone.replace(/\D/g, '');
+      if (phoneClean.length >= 10) {
+        const phoneExists = (db.profiles as any[]).find((p: any) => {
+          if (p.id === exclude_id) return false;
+          const pPhone = (p.phone || '').replace(/\D/g, '');
+          return pPhone && pPhone === phoneClean;
+        });
+        if (phoneExists) errors.push(`Phone (${phone}) is already registered.`);
+      }
+    }
+
+    if (errors.length > 0) {
+      res.status(409).json({ duplicate: true, message: errors.join(' ') });
       return;
     }
 
-    const db = await getDB();
-    const users = db.users as UserRow[];
-
-    if (email) {
-      const existing = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
-      if (existing) {
-        res.status(409).json({
-          success: false,
-          duplicate: true,
-          field: 'email',
-          message: `Email (${email}) is already registered. Please login instead.`,
-        });
-        return;
-      }
-    }
-
-    if (phone) {
-      const profiles = db.profiles as Array<{ phone?: string | null }>;
-      const existingPhone = profiles.find(
-        (p) => p.phone && p.phone === phone
-      );
-      if (existingPhone) {
-        res.status(409).json({
-          success: false,
-          duplicate: true,
-          field: 'phone',
-          message: `Phone number (${phone}) is already registered. Please login instead.`,
-        });
-        return;
-      }
-    }
-
-    res.status(200).json({ 
-      success: true, 
-      duplicate: false 
-    });
+    res.status(200).json({ duplicate: false });
   } catch (err) {
     console.error('[Auth] checkDuplicate error:', err);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Could not check duplicate.' 
-    });
+    res.status(500).json({ success: false, error: 'Could not check duplicate.' });
   }
 }

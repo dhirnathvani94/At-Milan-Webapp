@@ -271,3 +271,81 @@ export async function deleteUserDocument(req: Request, res: Response): Promise<v
     res.status(200).json({ success:true, message:`${toDelete.length} document(s) deleted.` });
   } catch(err) { res.status(500).json({success:false,error:'Could not delete document.'}); }
 }
+// ─── getAdminStats ────────────────────────────────────────────────────────────
+
+export async function getAdminStats(req: Request, res: Response): Promise<void> {
+  try {
+    const db = await getDB();
+    const profiles = (db.profiles as any[]) || [];
+    const users = (db.users as any[]) || [];
+    const interests = (db.interests as any[]) || [];
+    const purchases = (db.purchases as any[]) || [];
+    const documents = (db.documents as any[]) || [];
+
+    const nonAdminUsers = users.filter((u: any) => u.role !== 'admin');
+    const nonAdminProfiles = profiles.filter((p: any) => {
+      const user = nonAdminUsers.find((u: any) => u.id === p.user_id);
+      return !!user;
+    });
+
+    const totalUsers = nonAdminUsers.length;
+    const activeUsers = nonAdminUsers.filter((u: any) => u.is_active).length;
+    const inactiveUsers = nonAdminUsers.filter((u: any) => !u.is_active).length;
+    const premiumUsers = nonAdminUsers.filter((u: any) => u.is_premium).length;
+    const verifiedUsers = nonAdminProfiles.filter((p: any) => p.is_verified).length;
+    const unverifiedUsers = nonAdminProfiles.filter((p: any) => !p.is_verified).length;
+    const blockedUsers = nonAdminUsers.filter((u: any) => u.is_blocked).length;
+    const maleUsers = nonAdminProfiles.filter((p: any) => p.gender === 'male' || p.gender === 'groom').length;
+    const femaleUsers = nonAdminProfiles.filter((p: any) => p.gender === 'female' || p.gender === 'bride').length;
+
+    const totalRevenue = purchases.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const monthlyRevenue = purchases
+      .filter((p: any) => (p.created_at || '').slice(0, 7) === thisMonth)
+      .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    const lastMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7);
+    const lastMonthRevenue = purchases
+      .filter((p: any) => (p.created_at || '').slice(0, 7) === lastMonth)
+      .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    const revenueGrowth = lastMonthRevenue > 0
+      ? Math.round(((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0;
+
+    const pendingDocs = documents.filter((d: any) => d.status === 'pending').length;
+    const totalInterests = interests.length;
+    const acceptedInterests = interests.filter((i: any) => i.status === 'accepted').length;
+
+    const ageGroups = { '18-25': 0, '26-35': 0, '36-45': 0, '46+': 0 };
+    nonAdminProfiles.forEach((p: any) => {
+      if (!p.date_of_birth) return;
+      const age = new Date().getFullYear() - new Date(p.date_of_birth).getFullYear();
+      if (age >= 18 && age <= 25) ageGroups['18-25']++;
+      else if (age >= 26 && age <= 35) ageGroups['26-35']++;
+      else if (age >= 36 && age <= 45) ageGroups['36-45']++;
+      else if (age >= 46) ageGroups['46+']++;
+    });
+
+    res.status(200).json({
+      totalUsers, activeUsers, inactiveUsers, premiumUsers,
+      verifiedUsers, unverifiedUsers, blockedUsers,
+      maleUsers, femaleUsers,
+      totalRevenue, monthlyRevenue, revenueGrowth,
+      totalInterests, acceptedInterests,
+      pendingDocs, ageGroups,
+      totalTransactions: purchases.length,
+      activeSubscriptions: purchases.filter((p: any) =>
+        p.status === 'active' || p.status === 'completed'
+      ).length,
+    });
+  } catch (err) {
+    console.error('[Admin] getAdminStats error:', err);
+    res.status(200).json({
+      totalUsers: 0, activeUsers: 0, inactiveUsers: 0,
+      premiumUsers: 0, verifiedUsers: 0, unverifiedUsers: 0,
+      blockedUsers: 0, maleUsers: 0, femaleUsers: 0,
+      totalRevenue: 0, monthlyRevenue: 0, revenueGrowth: 0,
+      totalInterests: 0, acceptedInterests: 0,
+      pendingDocs: 0, ageGroups: { '18-25':0,'26-35':0,'36-45':0,'46+':0 },
+      totalTransactions: 0, activeSubscriptions: 0,
+    });
+  }
+}

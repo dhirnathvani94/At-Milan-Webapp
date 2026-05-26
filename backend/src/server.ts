@@ -52,6 +52,7 @@ import adminUsersRoutes     from './routes/admin/admin.users.routes';
 import adminSettingsRoutes  from './routes/admin/admin.settings.routes';
 import adminReportsRoutes   from './routes/admin/admin.reports.routes';
 import adminAnalyticsRoutes from './routes/admin/admin.analytics.routes';
+import { reactivationRouter, referralRouter, matchRouter } from './routes/stubs.routes';
 
 // ─── XSS clean ────────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -223,6 +224,11 @@ app.use('/api/admin', adminUsersRoutes);
 app.use('/api/admin', adminSettingsRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin', adminAnalyticsRoutes);
+
+// ── Stub routes (prevent 404 for unimplemented features) ─────────────────────
+app.use('/api/reactivation',       reactivationRouter);
+app.use('/api/referral',           referralRouter);
+app.use('/api/match-confirmation', matchRouter);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 404 HANDLER

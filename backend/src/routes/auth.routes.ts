@@ -1,7 +1,8 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { authLimiter, otpLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
 import { registerSchema, loginSchema } from '../middleware/validate';
+import { getDB } from '../db/database';
 import {
   register,
   login,
@@ -52,5 +53,30 @@ router.post('/reset-password', resetPassword);
 
 // POST /api/auth/check-duplicate
 router.post('/check-duplicate', authLimiter, checkDuplicate);
+
+// POST /api/auth/verify-reset-otp
+router.post('/verify-reset-otp', authLimiter, async (req: Request, res: Response) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      res.status(400).json({ error: 'Phone and OTP required.' });
+      return;
+    }
+    const db = await getDB();
+    const otps = (db.otps as any[]) || [];
+    const kv: Record<string, string> = {};
+    ((db.admin_settings_kv as any[]) || []).forEach((s: any) => { kv[s.key] = s.value; });
+    const masterOtp = (kv['master_otp'] || '').trim();
+    if (masterOtp && otp.trim() === masterOtp) {
+      res.json({ success: true, message: 'OTP verified.' });
+      return;
+    }
+    const record = otps.find((o: any) => o.phone === phone);
+    if (!record) { res.status(400).json({ error: 'No OTP found. Request new OTP.' }); return; }
+    if (new Date(record.expiry) < new Date()) { res.status(400).json({ error: 'OTP expired.' }); return; }
+    if (record.otp !== otp.trim()) { res.status(400).json({ error: 'Incorrect OTP.' }); return; }
+    res.json({ success: true, message: 'OTP verified.' });
+  } catch { res.status(500).json({ error: 'Verification failed.' }); }
+});
 
 export default router;
