@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, supabaseAdmin } from '../db/database';
 import { generateToken } from '../services/token.service';
 import { generateOTP, verifyOTP as verifyOTPService, clearOTP } from '../services/otp.service';
 import {
@@ -187,10 +187,21 @@ export async function login(req: Request, res: Response): Promise<void> {
   const ip = getClientIp(req);
   try {
     const { email, password } = req.body as { email: string; password: string };
-    const db = await getDB();
-    const users = db.users as UserRow[];
 
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    // --- Fetch user directly from Supabase so role is always read fresh from DB
+    const { data: userRows, error: userFetchError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .ilike('email', email.trim())
+      .limit(1);
+
+    if (userFetchError) {
+      console.error('[Auth] login — DB fetch error:', userFetchError.message);
+      res.status(500).json({ success: false, error: 'Login failed. Please try again.' });
+      return;
+    }
+
+    const user: UserRow | undefined = userRows?.[0] as UserRow | undefined;
 
     // --- Account not found — still audit but give generic message
     if (!user) {
@@ -225,7 +236,7 @@ export async function login(req: Request, res: Response): Promise<void> {
         user.login_locked_until = new Date(
           Date.now() + LOGIN_LOCK_MINUTES * 60 * 1000
         ).toISOString();
-        saveDB(db);
+        await supabaseAdmin.from('users').upsert(user, { onConflict: 'id' });
         createAuditLog({
           action: 'login_failed',
           actor_id: user.id,
@@ -242,7 +253,7 @@ export async function login(req: Request, res: Response): Promise<void> {
         return;
       }
 
-      saveDB(db);
+      await supabaseAdmin.from('users').upsert(user, { onConflict: 'id' });
       createAuditLog({
         action: 'login_failed',
         actor_id: user.id,
@@ -272,14 +283,23 @@ export async function login(req: Request, res: Response): Promise<void> {
     user.updated_at = new Date().toISOString();
 
     // Get profile
-    const profiles = db.profiles as ProfileRow[];
-    const profile = profiles.find((p) => p.user_id === user.id) ?? null;
+    const { data: profileData } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .limit(1);
+    const profile = (profileData?.[0] as ProfileRow | undefined) ?? null;
 
     // Get credits
-    const creditsArr = db.credits as CreditRow[];
-    const credits = creditsArr.find((c) => c.user_id === user.id) ?? null;
+    const { data: creditsData } = await supabaseAdmin
+      .from('credits')
+      .select('balance')
+      .eq('user_id', user.id)
+      .limit(1);
+    const credits = (creditsData?.[0] as CreditRow | undefined) ?? null;
 
-    saveDB(db);
+    // Persist updated login metadata back to Supabase
+    await supabaseAdmin.from('users').upsert(user, { onConflict: 'id' });
 
     const token = generateToken(user.id, user.email, user.role);
 
