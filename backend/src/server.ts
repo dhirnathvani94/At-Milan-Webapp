@@ -230,6 +230,26 @@ app.use('/api/reactivation',       reactivationRouter);
 app.use('/api/referral',           referralRouter);
 app.use('/api/match-confirmation', matchRouter);
 
+// GET /api/profile-status/:userId
+app.get('/api/profile-status/:userId', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const db = await getDB();
+    const profile = (db.profiles as any[]).find(
+      (p: any) => p.user_id === userId || p.id === userId
+    );
+    if (!profile) { res.status(404).json({ error: 'Not found' }); return; }
+    res.json({
+      profile_status:                  profile.profile_status                  || 'active',
+      reactivation_count:              profile.reactivation_count              || 0,
+      reactivation_status:             profile.reactivation_status             || 'none',
+      reactivation_rejection_remark:   profile.reactivation_rejection_remark   || '',
+      match_confirmed:                 profile.match_confirmed                 || false,
+      match_type:                      profile.match_type                      || null,
+    });
+  } catch { res.status(500).json({ error: 'Failed.' }); }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 404 HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
