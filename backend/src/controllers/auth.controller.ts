@@ -301,6 +301,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     // Persist updated login metadata back to Supabase
     await supabaseAdmin.from('users').upsert(user, { onConflict: 'id' });
 
+    console.log('[Login] User role from DB:', user.role);
     const token = generateToken(user.id, user.email, user.role);
 
     createAuditLog({

@@ -60,6 +60,7 @@ const xssClean = require('xss-clean') as () => express.RequestHandler;
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 const app        = express();
+app.set('trust proxy', 1);          // Trust Render/Heroku reverse proxy for X-Forwarded-For
 const httpServer = http.createServer(app);
 
 // ═══════════════════════════════════════════════════════════════════════════════
