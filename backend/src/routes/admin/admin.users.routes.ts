@@ -150,7 +150,8 @@ router.get('/my-permissions', authenticateToken, requireAdmin, adminLimiter, asy
       (m.email || '').toLowerCase() === (req.user?.email || '').toLowerCase()
     );
     if (!manager) {
-      res.json({ success: true, role: 'admin', permissions: ['/admin'] });
+      // Not in admin_managers but authenticated as admin — give full master access
+      res.json({ success: true, role: 'master_admin', permissions: ['*'] });
       return;
     }
     res.json({

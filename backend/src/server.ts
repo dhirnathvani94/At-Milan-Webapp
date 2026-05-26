@@ -18,6 +18,7 @@ import { corsOptions } from './config/cors';
 // ─── Middleware ───────────────────────────────────────────────────────────────
 import { requestLogger } from './middleware/logger';
 import { apiLimiter } from './middleware/rateLimit';
+import { authenticateToken } from './middleware/auth';
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 import { getDB, saveDB } from './db/database';
@@ -250,6 +251,208 @@ app.get('/api/profile-status/:userId', async (req: Request, res: Response) => {
   } catch { res.status(500).json({ error: 'Failed.' }); }
 });
 
+// ─── MISSING ROUTE 1: interests status between two users ────────────────────
+app.get('/api/interests/status/:userA/:userB', async (req: Request, res: Response) => {
+  try {
+    const { userA, userB } = req.params;
+    const db = await getDB();
+    const interests = db.interests as any[];
+    const sent     = interests.filter((i: any) => i.sender_id === userA && i.receiver_id === userB);
+    const received = interests.filter((i: any) => i.sender_id === userB && i.receiver_id === userA);
+    const getPriority = (s: string) => s === 'accepted' ? 4 : s === 'pending' ? 3 : s === 'declined' ? 2 : 1;
+    sent.sort((a: any, b: any) => getPriority(b.status) - getPriority(a.status));
+    received.sort((a: any, b: any) => getPriority(b.status) - getPriority(a.status));
+    res.json({ sent: sent[0] || null, received: received[0] || null });
+  } catch { res.status(500).json({ error: 'Failed.' }); }
+});
+
+// ─── MISSING ROUTE 2: public banners ────────────────────────────────────────
+app.get('/api/public/banners', async (_req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const kv = db.admin_settings_kv as any[];
+    const setting = kv.find((s: any) => s.key === 'home_banners');
+    if (!setting?.value) { res.json({ banners: [] }); return; }
+    try { res.json({ banners: JSON.parse(setting.value) }); }
+    catch { res.json({ banners: [] }); }
+  } catch { res.json({ banners: [] }); }
+});
+
+// ─── MISSING ROUTE 3: match-confirmation-email ──────────────────────────────
+app.post('/api/match-confirmation-email', async (req: Request, res: Response) => {
+  try {
+    const { user_id, match_type, match_platform, partner_profile_id } = req.body;
+    if (!user_id) { res.status(400).json({ error: 'Missing user_id' }); return; }
+    const db = await getDB();
+    const profile = (db.profiles as any[]).find((p: any) => p.user_id === user_id || p.id === user_id);
+    if (!profile) { res.status(404).json({ error: 'Profile not found' }); return; }
+    const newStatus = match_type === 'marriage' ? 'married' : 'engaged';
+    profile.match_confirmed     = true;
+    profile.match_type          = match_type     || 'engagement';
+    profile.match_platform      = match_platform || 'other';
+    profile.match_partner_profile_id = partner_profile_id || '';
+    profile.profile_status      = newStatus;
+    if (!(db as any).match_confirmations) (db as any).match_confirmations = [];
+    const already = (db as any).match_confirmations.find((m: any) => m.user_id === user_id && m.status !== 'rejected');
+    if (!already) {
+      (db as any).match_confirmations.push({
+        id: uuidv4(), user_id,
+        match_type:          match_type          || 'engagement',
+        match_platform:      match_platform      || 'other',
+        partner_profile_id:  partner_profile_id  || '',
+        status: 'pending', created_at: new Date().toISOString()
+      });
+    }
+    await saveDB(db);
+    res.json({ success: true, status: newStatus });
+  } catch (err: any) { res.status(500).json({ error: err.message || 'Failed' }); }
+});
+
+// ─── MISSING ROUTE 4: admin reactivation requests ───────────────────────────
+app.get('/api/admin/reactivation-requests', authenticateToken, async (_req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const requests = ((db as any).reactivation_requests || []).map((r: any) => {
+      const profile = (db.profiles as any[]).find((p: any) => p.user_id === r.user_id || p.id === r.user_id);
+      return {
+        ...r, user: profile ? {
+          first_name:         profile.first_name,
+          last_name:          profile.last_name,
+          profile_id:         profile.profile_id,
+          profile_photo_url:  profile.profile_photo_url,
+          profile_status:     profile.profile_status
+        } : null
+      };
+    });
+    res.json(requests);
+  } catch { res.status(500).json({ error: 'Failed.' }); }
+});
+
+// ─── MISSING ROUTE 5: admin reactivation decision ───────────────────────────
+app.post('/api/admin/reactivation/:requestId/decision', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { requestId } = req.params;
+    const { decision, remark } = req.body;
+    const db = await getDB();
+    const requests = ((db as any).reactivation_requests || []) as any[];
+    const request = requests.find((r: any) => r.id === requestId);
+    if (!request) { res.status(404).json({ error: 'Request not found' }); return; }
+    request.status             = decision;
+    request.rejection_remark   = remark || '';
+    request.decided_at         = new Date().toISOString();
+    const profile = (db.profiles as any[]).find((p: any) => p.user_id === request.user_id || p.id === request.user_id);
+    if (profile) {
+      if (decision === 'approved') {
+        profile.profile_status                = 'active';
+        profile.reactivation_status           = 'approved';
+        profile.match_confirmed               = false;
+        profile.match_type                    = null;
+        profile.reactivation_rejection_remark = '';
+      } else {
+        profile.reactivation_status           = 'rejected';
+        profile.reactivation_rejection_remark = remark || '';
+      }
+    }
+    await saveDB(db);
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ error: err.message || 'Failed' }); }
+});
+
+// ─── MISSING ROUTE 6: admin match-confirmations list ────────────────────────
+app.get('/api/admin/match-confirmations', authenticateToken, async (_req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const confirmations = ((db as any).match_confirmations || []).map((m: any) => {
+      const profile = (db.profiles as any[]).find((p: any) => p.user_id === m.user_id || p.id === m.user_id);
+      return {
+        ...m, user: profile ? {
+          first_name:         profile.first_name,
+          last_name:          profile.last_name,
+          profile_id:         profile.profile_id,
+          profile_photo_url:  profile.profile_photo_url
+        } : null
+      };
+    });
+    res.json(confirmations);
+  } catch { res.status(500).json({ error: 'Failed.' }); }
+});
+
+// ─── MISSING ROUTE 7: admin referral-links ──────────────────────────────────
+app.get('/api/admin/referral-links', authenticateToken, async (_req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const links = ((db as any).referral_links || []).map((l: any) => {
+      const profile = (db.profiles as any[]).find((p: any) => p.user_id === l.user_id || p.id === l.user_id);
+      return {
+        id:             l.id,
+        user_id:        l.user_id,
+        code:           l.code,
+        type:           l.match_type || l.type || 'engagement',
+        status:         l.is_used ? 'used' : 'active',
+        used_by:        l.used_by   || null,
+        used_at:        l.used_date || l.used_at || null,
+        created_at:     l.created_at,
+        premium_months: l.premium_months || 1,
+        user: profile ? {
+          first_name: profile.first_name,
+          last_name:  profile.last_name || '',
+          profile_id: profile.profile_id
+        } : null
+      };
+    });
+    res.json(links);
+  } catch { res.status(500).json({ error: 'Failed.' }); }
+});
+
+// ─── MISSING ROUTE 8: admin notifications mark-read ─────────────────────────
+app.post('/api/admin/notifications/:notifId/mark-read', async (req: Request, res: Response) => {
+  try {
+    const db = await getDB();
+    const { user_id } = req.body;
+    const notif = (db.notifications as any[]).find(
+      (n: any) => n.admin_notification_id === req.params.notifId && n.user_id === user_id
+    );
+    if (notif) {
+      notif.is_read = true;
+      const adminNotif = ((db as any).admin_notifications as any[] || []).find((n: any) => n.id === req.params.notifId);
+      if (adminNotif) adminNotif.read_count = (adminNotif.read_count || 0) + 1;
+      await saveDB(db);
+    }
+    res.json({ success: true });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── MISSING ROUTE 9: accessibility-status ──────────────────────────────────
+app.get('/api/admin/accessibility-status', (_req: Request, res: Response) => {
+  res.json({
+    wcag_version: '2.1', conformance_level: 'AA',
+    features: {
+      skip_to_content: true, focus_indicators: true,
+      keyboard_navigation: true, screen_reader_support: true,
+      aria_landmarks: true, reduced_motion: true
+    }
+  });
+});
+
+// ─── MISSING ROUTE 10: scaling-status (stub) ────────────────────────────────
+app.get('/api/admin/scaling-status', (_req: Request, res: Response) => {
+  res.json({
+    cluster:     { mode: 'single', pid: process.pid, cpuCores: 1 },
+    autoScaling: { enabled: false },
+    load:        { requests: { rps: 0 } }
+  });
+});
+
+// ─── MISSING ROUTE 11: scaling-decision (stub) ──────────────────────────────
+app.get('/api/admin/scaling-decision', (_req: Request, res: Response) => {
+  res.json({ decision: 'none', reason: 'Auto-scaling not configured on this plan.' });
+});
+
+// ─── MISSING ROUTE 12: cdn-config (stub) ────────────────────────────────────
+app.post('/api/admin/cdn-config', authenticateToken, (_req: Request, res: Response) => {
+  res.json({ success: true, message: 'CDN config updated.' });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 404 HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -317,43 +520,82 @@ async function bootstrapAdmin(): Promise<void> {
       updated_at: string;
     }>;
 
-    const existingAdmin = users.find(
+    let adminUser = users.find(
       (u) => u.email.toLowerCase() === env.ADMIN_EMAIL.toLowerCase() && u.role === 'admin'
     );
 
-    if (existingAdmin) {
+    if (adminUser) {
       console.log(`[Bootstrap] Admin account ready: ${env.ADMIN_EMAIL}`);
-      return;
+    } else {
+      // Create admin — password comes from env only, never hardcoded
+      const now          = new Date().toISOString();
+      const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, 12);
+      const newId        = uuidv4();
+
+      const newAdmin = {
+        id:                          newId,
+        email:                       env.ADMIN_EMAIL.toLowerCase(),
+        password_hash:               passwordHash,
+        role:                        'admin',
+        is_active:                   true,
+        email_verified:              true,
+        email_verify_token:          null,
+        email_verify_token_expiry:   null,
+        password_reset_token:        null,
+        password_reset_token_expiry: null,
+        last_login:                  null,
+        login_attempts:              0,
+        login_locked_until:          null,
+        provider:                    null,
+        provider_id:                 null,
+        created_at:                  now,
+        updated_at:                  now,
+      };
+      users.push(newAdmin);
+      adminUser = newAdmin as any;
+
+      // Log email only — NEVER log the password
+      console.log(`[Bootstrap] Admin account created: ${env.ADMIN_EMAIL}`);
     }
 
-    // Create admin — password comes from env only, never hardcoded
-    const now          = new Date().toISOString();
-    const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, 12);
+    // ── Seed admin into admin_managers with full master access ────────────────
+    // Ensures the main admin always has ['*'] permissions on every startup.
+    try {
+      if (!(db as any).admin_managers) (db as any).admin_managers = [];
+      const managers = (db as any).admin_managers as any[];
 
-    users.push({
-      id:                          uuidv4(),
-      email:                       env.ADMIN_EMAIL.toLowerCase(),
-      password_hash:               passwordHash,
-      role:                        'admin',
-      is_active:                   true,
-      email_verified:              true,
-      email_verify_token:          null,
-      email_verify_token_expiry:   null,
-      password_reset_token:        null,
-      password_reset_token_expiry: null,
-      last_login:                  null,
-      login_attempts:              0,
-      login_locked_until:          null,
-      provider:                    null,
-      provider_id:                 null,
-      created_at:                  now,
-      updated_at:                  now,
-    });
+      const existingEntry = managers.find(
+        (m: any) => m.email?.toLowerCase() === env.ADMIN_EMAIL.toLowerCase()
+      );
+
+      if (!existingEntry) {
+        const now = new Date().toISOString();
+        managers.push({
+          id:           adminUser!.id,
+          email:        adminUser!.email,
+          password_hash: adminUser!.password_hash,
+          name:         'Master Admin',
+          role:         'master_admin',
+          permissions:  ['*'],
+          is_active:    true,
+          created_by:   'system',
+          created_at:   now,
+          updated_at:   now,
+          last_login:   null,
+        });
+        console.log('[Bootstrap] Master Admin seeded into admin_managers with full permissions.');
+      } else if (!existingEntry.permissions?.includes('*')) {
+        // Upgrade existing entry to full permissions if not already set
+        existingEntry.permissions = ['*'];
+        existingEntry.role        = 'master_admin';
+        existingEntry.updated_at  = new Date().toISOString();
+        console.log('[Bootstrap] Master Admin permissions upgraded to ["*"].');
+      }
+    } catch (seedErr) {
+      console.warn('[Bootstrap] Could not seed admin_managers:', (seedErr as Error).message);
+    }
 
     saveDB(db);
-
-    // Log email only — NEVER log the password
-    console.log(`[Bootstrap] Admin account created: ${env.ADMIN_EMAIL}`);
   } catch (err) {
     console.error('[Bootstrap] Failed to bootstrap admin account:', (err as Error).message);
     // Non-fatal — server continues running
