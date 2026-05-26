@@ -97,9 +97,17 @@ export async function uploadDocument(
 }
 
 export async function getUserDocuments(userId: string) {
-  const response = await fetch(apiUrl(`/api/documents/${userId}`))
-  if (!response.ok) throw new Error('Failed to fetch documents')
-  return response.json()
+  try {
+    const response = await fetch(apiUrl(`/api/documents/${userId}`))
+    if (!response.ok) {
+      console.error('Failed to fetch documents, status:', response.status)
+      return null
+    }
+    return response.json()
+  } catch (error) {
+    console.error('Error fetching documents:', error)
+    return null
+  }
 }
 
 export async function updatePassword(newPassword: string) {
@@ -147,12 +155,21 @@ export async function confirmPasswordReset(email: string, resetToken: string, ne
 }
 
 export async function updateProfileField(userId: string, updates: Record<string, any>) {
-  const response = await fetch(apiUrl(`/api/profiles/${userId}/personal`), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates)
-  })
-  if (!response.ok) throw new Error('Failed to update profile field')
+  try {
+    const response = await fetch(apiUrl(`/api/profiles/${userId}/personal`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    })
+    if (!response.ok) {
+      console.error('Failed to update profile field, status:', response.status)
+      return null
+    }
+    return response.json()
+  } catch (error) {
+    console.error('Error updating profile field:', error)
+    return null
+  }
 }
 
 export async function deactivateAccount(userId: string) {

@@ -85,9 +85,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (response.ok) {
           const data = await response.json()
           set({ credits: data })
+        } else {
+          // Non-ok response — silently set credits to null, do not crash
+          set({ credits: null })
         }
       } catch (error) {
         console.error('Error fetching credits:', error)
+        set({ credits: null })
       }
     }
   },
@@ -110,35 +114,61 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       const token = localStorage.getItem('atmilan-token')
-      if (token) {
-        let payload: any = null
-        try {
-          // Safely decode — malformed/expired tokens are removed
-          payload = JSON.parse(atob(token.split('.')[1]))
-        } catch {
-          // Token is corrupt — wipe it so it never causes issues again
-          localStorage.removeItem('atmilan-token')
-        }
+      if (!token) return;
 
-        if (payload && payload.id) {
-          // Check token expiry
-          const now = Math.floor(Date.now() / 1000)
-          if (payload.exp && payload.exp < now) {
-            // Token expired — clear it
-            localStorage.removeItem('atmilan-token')
-          } else {
-            set({ user: { id: payload.id, email: payload.email } as any })
-            await get().fetchProfile(payload.id)
-            await get().refreshCredits()
-            useSocketStore.getState().connect()
-          }
-        }
+      let payload: any = null
+      try {
+        // Safely decode — malformed/expired tokens are removed
+        payload = JSON.parse(atob(token.split('.')[1]))
+      } catch {
+        // Token is corrupt — wipe it so it never causes issues again
+        localStorage.removeItem('atmilan-token')
+        return;
       }
+
+      if (!payload || !payload.id) return;
+
+      // Check token expiry
+      const now = Math.floor(Date.now() / 1000)
+      if (payload.exp && payload.exp < now) {
+        // Token expired — clear it
+        localStorage.removeItem('atmilan-token')
+        return;
+      }
+
+      // Set user from JWT payload
+      set({ user: { id: payload.id, email: payload.email } as any })
+
+      // Fetch profile — failure sets profile to null, never crashes
+      try {
+        await get().fetchProfile(payload.id)
+      } catch (profileError) {
+        console.error('Auth init — profile fetch failed:', profileError)
+        set({ profile: null })
+      }
+
+      // Fetch credits — failure sets credits to null, never crashes
+      try {
+        await get().refreshCredits()
+      } catch (creditsError) {
+        console.error('Auth init — credits fetch failed:', creditsError)
+        set({ credits: null })
+      }
+
+      // Connect socket — failure is non-fatal
+      try {
+        useSocketStore.getState().connect()
+      } catch (socketError) {
+        console.error('Auth init — socket connect failed:', socketError)
+      }
+
     } catch (error) {
       console.error('Auth initialization error:', error)
-      // On any unexpected error, clear the token to prevent future loops
+      // On any unexpected error, clear auth state completely
       localStorage.removeItem('atmilan-token')
+      set({ user: null, profile: null, credits: null })
     } finally {
+      // Always mark as done — app must never be stuck in loading state
       set({ loading: false, initialized: true })
     }
   }

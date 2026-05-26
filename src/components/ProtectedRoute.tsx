@@ -63,18 +63,21 @@ export default function ProtectedRoute() {
     }
   }, [user?.id])
 
+  // Still initialising — show skeleton, never crash
   if (loading) return (
     <div className="min-h-screen pt-20 bg-gray-50">
       <PageSkeleton />
     </div>
   )
 
+  // No authenticated user — redirect to login
   if (!user) return <Navigate to="/login" replace />
 
-  // Admin bypasses approval check
-  if (profile?.role === 'admin') return <Outlet />
+  // Admin bypasses approval check — guard against null/undefined profile safely
+  if (profile != null && profile.role === 'admin') return <Outlet />
 
   // Profile not yet approved by admin — send to waiting page
+  // Treat missing is_verified field as false (profile may be partially loaded)
   if (!profile || profile.is_verified !== true) {
     return <Navigate to="/pending-approval" replace />
   }
@@ -82,8 +85,10 @@ export default function ProtectedRoute() {
   // Profile paused/engaged/married — send to reactivation page
   // Exception: if admin just approved (reactivation_status === 'approved'), let them through
   // even if profile_status hasn't been updated in the store yet (timing gap)
-  const blockedStatuses = ["yellow", "red", "engaged", "married"]
-  if (blockedStatuses.includes(profile.profile_status) && profile.reactivation_status !== 'approved') {
+  const profileStatus: string = profile.profile_status ?? ''
+  const reactivationStatus: string = profile.reactivation_status ?? ''
+  const blockedStatuses = ['yellow', 'red', 'engaged', 'married']
+  if (blockedStatuses.includes(profileStatus) && reactivationStatus !== 'approved') {
     return <Navigate to="/reactivation-pending" replace />
   }
 
