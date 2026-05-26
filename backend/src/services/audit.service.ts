@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDBSync, saveDB } from '../db/database';
+import { getDB, saveDB } from '../db/database';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,10 +96,11 @@ const SEVERITY_MAP: Partial<Record<AuditAction, AuditSeverity>> = {
 /**
  * Saves an audit log entry to the database.
  * Never throws — errors are caught and logged to console only.
+ * Fire-and-forget: callers do not need to await this.
  */
-export function createAuditLog(input: CreateAuditLogInput): void {
+export async function createAuditLog(input: CreateAuditLogInput): Promise<void> {
   try {
-    const db = getDBSync();
+    const db = await getDB();
 
     const entry: AuditLogEntry = {
       id:               uuidv4(),
@@ -115,7 +116,7 @@ export function createAuditLog(input: CreateAuditLogInput): void {
     };
 
     (db.audit_logs as AuditLogEntry[]).push(entry);
-    saveDB(db);
+    await saveDB(db);
   } catch (err) {
     console.error('[Audit] Failed to write audit log:', (err as Error).message);
   }
@@ -149,8 +150,8 @@ export interface PaginatedAuditLogs {
  * Returns a paginated, filtered list of audit log entries.
  * Results are sorted newest-first.
  */
-export function getAuditLogs(filters: AuditLogFilters = {}): PaginatedAuditLogs {
-  const db   = getDBSync();
+export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<PaginatedAuditLogs> {
+  const db   = await getDB();
   let logs   = (db.audit_logs as AuditLogEntry[]).slice();
 
   // ── Apply filters ──────────────────────────────────────────────────────────

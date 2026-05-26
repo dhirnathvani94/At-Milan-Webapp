@@ -1,5 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { getDBSync } from '../db/database';
+import { getDB } from '../db/database';
 
 // ─── Read SMTP settings from DB ───────────────────────────────────────────────
 
@@ -12,9 +12,9 @@ interface SmtpConfig {
   fromEmail: string;
 }
 
-function getSmtpConfig(): SmtpConfig | null {
+async function getSmtpConfig(): Promise<SmtpConfig | null> {
   try {
-    const db = getDBSync();
+    const db = await getDB();
     const kv = db.admin_settings_kv as Array<{ key: string; value: string }>;
 
     const get = (key: string): string =>
@@ -70,7 +70,7 @@ export async function sendEmail(
   subject: string,
   html: string
 ): Promise<boolean> {
-  const cfg = getSmtpConfig();
+  const cfg = await getSmtpConfig();
 
   if (!cfg) {
     console.warn('[Email] SMTP not configured. Skipping email to:', to);
@@ -95,9 +95,9 @@ export async function sendEmail(
 
 // ─── Shared HTML wrapper ──────────────────────────────────────────────────────
 
-function getAppName(): string {
+async function getAppName(): Promise<string> {
   try {
-    const db = getDBSync();
+    const db = await getDB();
     const kv = db.admin_settings_kv as Array<{ key: string; value: string }>;
     return kv.find((r) => r.key === 'platform_name')?.value || 'AtMilan';
   } catch {
@@ -105,9 +105,9 @@ function getAppName(): string {
   }
 }
 
-function getSupportEmail(): string {
+async function getSupportEmail(): Promise<string> {
   try {
-    const db = getDBSync();
+    const db = await getDB();
     const kv = db.admin_settings_kv as Array<{ key: string; value: string }>;
     return kv.find((r) => r.key === 'contact_email')?.value || 'support@atmilan.com';
   } catch {
@@ -115,8 +115,8 @@ function getSupportEmail(): string {
   }
 }
 
-function wrapHtml(title: string, body: string): string {
-  const appName = getAppName();
+async function wrapHtml(title: string, body: string): Promise<string> {
+  const appName = await getAppName();
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -161,6 +161,7 @@ export async function sendOTPEmail(
   otp: string,
   name: string
 ): Promise<boolean> {
+  const appName = await getAppName();
   const body = `
     <h2>Your OTP Code</h2>
     <p>Hello <strong>${name}</strong>,</p>
@@ -170,10 +171,10 @@ export async function sendOTPEmail(
     </div>
     <div class="note">
       ⏱ This OTP is valid for <strong>10 minutes</strong> and can only be used once.<br/>
-      Never share this code with anyone — ${getAppName()} will never ask for it.
+      Never share this code with anyone — ${appName} will never ask for it.
     </div>`;
 
-  return sendEmail(to, `Your ${getAppName()} OTP Code`, wrapHtml('OTP Code', body));
+  return sendEmail(to, `Your ${appName} OTP Code`, await wrapHtml('OTP Code', body));
 }
 
 // ─── sendVerificationEmail ────────────────────────────────────────────────────
@@ -184,11 +185,12 @@ export async function sendVerificationEmail(
   name: string,
   baseUrl: string
 ): Promise<boolean> {
+  const appName = await getAppName();
   const link = `${baseUrl}/verify-email?token=${token}`;
   const body = `
     <h2>Verify Your Email Address</h2>
     <p>Hello <strong>${name}</strong>,</p>
-    <p>Welcome to ${getAppName()}! Please verify your email address to activate your account.</p>
+    <p>Welcome to ${appName}! Please verify your email address to activate your account.</p>
     <div style="text-align:center;">
       <a href="${link}" class="btn">Verify Email Address</a>
     </div>
@@ -199,7 +201,7 @@ export async function sendVerificationEmail(
       If you did not create an account, you can safely ignore this email.
     </div>`;
 
-  return sendEmail(to, `Verify Your ${getAppName()} Account`, wrapHtml('Verify Email', body));
+  return sendEmail(to, `Verify Your ${appName} Account`, await wrapHtml('Verify Email', body));
 }
 
 // ─── sendWelcomeEmail ─────────────────────────────────────────────────────────
@@ -208,10 +210,11 @@ export async function sendWelcomeEmail(
   to: string,
   name: string
 ): Promise<boolean> {
+  const appName = await getAppName();
   const body = `
-    <h2>Welcome to ${getAppName()}! 🎉</h2>
+    <h2>Welcome to ${appName}! 🎉</h2>
     <p>Hello <strong>${name}</strong>,</p>
-    <p>Your email has been verified and your account is now active. We're delighted to have you as part of the ${getAppName()} family.</p>
+    <p>Your email has been verified and your account is now active. We're delighted to have you as part of the ${appName} family.</p>
     <p>Here's what you can do next:</p>
     <ul>
       <li>Complete your profile to attract the right matches</li>
@@ -220,9 +223,9 @@ export async function sendWelcomeEmail(
       <li>Use filters to find your perfect match</li>
     </ul>
     <p>We wish you the very best on your journey to finding your life partner.</p>
-    <p>With warm regards,<br/><strong>The ${getAppName()} Team</strong></p>`;
+    <p>With warm regards,<br/><strong>The ${appName} Team</strong></p>`;
 
-  return sendEmail(to, `Welcome to ${getAppName()}!`, wrapHtml('Welcome', body));
+  return sendEmail(to, `Welcome to ${appName}!`, await wrapHtml('Welcome', body));
 }
 
 // ─── sendInterestEmail ────────────────────────────────────────────────────────
@@ -231,18 +234,19 @@ export async function sendInterestEmail(
   to: string,
   fromName: string
 ): Promise<boolean> {
+  const appName = await getAppName();
   const body = `
     <h2>Someone is Interested in You! 💌</h2>
-    <p>Great news! <strong>${fromName}</strong> has sent you an interest on ${getAppName()}.</p>
+    <p>Great news! <strong>${fromName}</strong> has sent you an interest on ${appName}.</p>
     <p>Log in to your account to view their profile and respond to their interest.</p>
     <div style="text-align:center;">
       <a href="#" class="btn">View Profile</a>
     </div>
     <div class="note">
-      Log in to ${getAppName()} to accept or decline this interest.
+      Log in to ${appName} to accept or decline this interest.
     </div>`;
 
-  return sendEmail(to, `${fromName} is interested in you on ${getAppName()}`, wrapHtml('New Interest', body));
+  return sendEmail(to, `${fromName} is interested in you on ${appName}`, await wrapHtml('New Interest', body));
 }
 
 // ─── sendPasswordResetEmail ───────────────────────────────────────────────────
@@ -253,11 +257,12 @@ export async function sendPasswordResetEmail(
   name: string,
   baseUrl: string
 ): Promise<boolean> {
+  const appName = await getAppName();
   const link = `${baseUrl}/reset-password?token=${token}`;
   const body = `
     <h2>Reset Your Password</h2>
     <p>Hello <strong>${name}</strong>,</p>
-    <p>We received a request to reset the password for your ${getAppName()} account.</p>
+    <p>We received a request to reset the password for your ${appName} account.</p>
     <div style="text-align:center;">
       <a href="${link}" class="btn">Reset Password</a>
     </div>
@@ -268,5 +273,5 @@ export async function sendPasswordResetEmail(
       If you did not request a password reset, please ignore this email — your password will not change.
     </div>`;
 
-  return sendEmail(to, `Reset Your ${getAppName()} Password`, wrapHtml('Reset Password', body));
+  return sendEmail(to, `Reset Your ${appName} Password`, await wrapHtml('Reset Password', body));
 }

@@ -230,7 +230,7 @@ export async function getAuditLogsHandler(req: Request, res: Response): Promise<
     if (q['from'])          filters.from          = q['from'];
     if (q['to'])            filters.to            = q['to'];
 
-    const result = getAuditLogs(filters);
+    const result = await getAuditLogs(filters);
 
     res.status(200).json({ success: true, ...result });
   } catch (err) {

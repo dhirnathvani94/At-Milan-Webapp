@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, getDBSync, saveDB } from '../../db/database';
+import { getDB, saveDB } from '../../db/database';
 import { createAuditLog } from '../../services/audit.service';
 import { emitToAdmin } from '../../services/socket.service';
 import nodemailer from 'nodemailer';
@@ -428,9 +428,7 @@ export async function testFirebase(req: Request, res: Response): Promise<void> {
         title: title ?? 'Test Notification',
         body: msgBody ?? (() => {
           try {
-            const db = getDBSync();
-            const kv = db.admin_settings_kv as Array<{ key: string; value: string }>;
-            const appName = kv.find((r) => r.key === 'platform_name')?.value || 'AtMilan';
+            const appName = settings.find((s) => s.key === 'platform_name')?.value || 'AtMilan';
             return `This is a test push notification from ${appName} admin.`;
           } catch { return 'This is a test push notification from admin.'; }
         })(),

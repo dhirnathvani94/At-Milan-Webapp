@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, getDBSync, saveDB } from '../db/database';
+import { getDB, saveDB } from '../db/database';
 import { emitToAdmin } from '../services/socket.service';
 import { createAuditLog } from '../services/audit.service';
 import { createNotification } from './notification.controller';
@@ -79,8 +79,8 @@ interface CreditPlanRow {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getActiveGatewayRow(): GatewayRow | null {
-  const db = getDBSync();
+async function getActiveGatewayRow(): Promise<GatewayRow | null> {
+  const db = await getDB();
   return (
     (db.payment_gateways as GatewayRow[]).find((g) => g.is_active) ?? null
   );
@@ -96,13 +96,13 @@ function getOrCreateCreditRow(credits: CreditRow[], userId: string): CreditRow {
   return row;
 }
 
-function addCreditsToUser(
+async function addCreditsToUser(
   userId: string,
   amount: number,
   reason: string,
   referenceId: string | null
-): void {
-  const db      = getDBSync();
+): Promise<void> {
+  const db      = await getDB();
   const credits = db.credits as CreditRow[];
   const history = db.credits_history as CreditHistoryRow[];
 
@@ -121,7 +121,7 @@ function addCreditsToUser(
     created_at:    new Date().toISOString(),
   });
 
-  saveDB(db);
+  await saveDB(db);
 }
 
 // ─── getActiveGateway ─────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ function addCreditsToUser(
  */
 export async function getActiveGateway(req: Request, res: Response): Promise<void> {
   try {
-    const gateway = getActiveGatewayRow();
+    const gateway = await getActiveGatewayRow();
 
     if (!gateway) {
       res.status(404).json({ success: false, error: 'No active payment gateway configured.' });
@@ -182,7 +182,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const gateway = getActiveGatewayRow();
+    const gateway = await getActiveGatewayRow();
     if (!gateway) {
       res.status(503).json({ success: false, error: 'Payment gateway not configured.' });
       return;
@@ -291,7 +291,7 @@ export async function verifyPayment(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const gateway = getActiveGatewayRow();
+    const gateway = await getActiveGatewayRow();
     if (!gateway) {
       res.status(503).json({ success: false, error: 'Payment gateway not configured.' });
       return;
@@ -341,7 +341,7 @@ export async function verifyPayment(req: Request, res: Response): Promise<void> 
       const plan = (db.credit_plans as CreditPlanRow[]).find((p) => p.id === purchase.plan_id);
       if (plan) {
         purchase.credits_added = plan.credits;
-        addCreditsToUser(userId, plan.credits, 'credit_purchase', purchase.id);
+        await addCreditsToUser(userId, plan.credits, 'credit_purchase', purchase.id);
       }
     }
 
@@ -356,12 +356,12 @@ export async function verifyPayment(req: Request, res: Response): Promise<void> 
         // Add included credits
         if (plan.credits_included > 0) {
           purchase.credits_added = plan.credits_included;
-          addCreditsToUser(userId, plan.credits_included, 'membership_credits', purchase.id);
+          await addCreditsToUser(userId, plan.credits_included, 'membership_credits', purchase.id);
         }
       }
     }
 
-    saveDB(db);
+    await saveDB(db);
 
     // ── Audit + socket ─────────────────────────────────────────────────────
     createAuditLog({

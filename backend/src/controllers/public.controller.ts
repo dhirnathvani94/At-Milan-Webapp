@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, getDBSync, saveDB } from '../db/database';
+import { getDB, saveDB } from '../db/database';
 import { sendEmail } from '../services/email.service';
 import { isUserOnline } from '../services/socket.service';
 
@@ -59,8 +59,8 @@ interface AdminSettingRow {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getAdminSetting(key: string): string {
-  const db  = getDBSync();
+async function getAdminSetting(key: string): Promise<string> {
+  const db  = await getDB();
   const kv  = db.admin_settings_kv as AdminSettingRow[];
   return kv.find((r) => r.key === key)?.value ?? '';
 }
@@ -199,8 +199,8 @@ export async function submitContact(req: Request, res: Response): Promise<void> 
     saveDB(db);
 
     // Send email to admin — non-blocking
-    const adminEmail = getAdminSetting('admin_contact_email') ||
-                       getAdminSetting('smtp_from_email');
+    const adminEmail = (await getAdminSetting('admin_contact_email')) ||
+                       (await getAdminSetting('smtp_from_email'));
 
     if (adminEmail) {
       const html = `
