@@ -49,9 +49,13 @@ export default function LoginPage() {
       useAuthStore.setState({ initialized: false })
       await useAuthStore.getState().initialize()
       
+      // Small delay to ensure Zustand state is fully settled before reading
+      await new Promise(resolve => setTimeout(resolve, 200))
       const authStore = useAuthStore.getState()
       const profile = authStore.profile
       const user = authStore.user
+      console.log('[Login] user.role after init:', user?.role)
+      console.log('[Login] profile:', profile?.first_name)
       
       toast.success(`Welcome back, ${profile?.first_name || 'User'}! 👋`)
       if (user?.role === 'admin') {
@@ -85,9 +89,13 @@ export default function LoginPage() {
       useAuthStore.setState({ initialized: false })
       await useAuthStore.getState().initialize()
       
+      // Small delay to ensure Zustand state is fully settled before reading
+      await new Promise(resolve => setTimeout(resolve, 200))
       const authStore = useAuthStore.getState()
       const profile = authStore.profile
       const user = authStore.user
+      console.log('[Login] user.role after init:', user?.role)
+      console.log('[Login] profile:', profile?.first_name)
       
       toast.success(`Welcome back, ${profile?.first_name || 'User'}! 👋`)
       if (user?.role === 'admin') {
