@@ -21,7 +21,7 @@ import { apiLimiter } from './middleware/rateLimit';
 import { authenticateToken } from './middleware/auth';
 
 // ─── Database ─────────────────────────────────────────────────────────────────
-import { getDB, saveDB } from './db/database';
+import { getDB, saveDB, supabaseAdmin } from './db/database';
 
 // ─── Socket ───────────────────────────────────────────────────────────────────
 import { initSocket } from './services/socket.service';
@@ -609,6 +609,111 @@ async function bootstrapAdmin(): Promise<void> {
 async function startServer(): Promise<void> {
   // Bootstrap admin account before accepting requests
   await bootstrapAdmin();
+
+  // Seed all required admin settings if missing
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from('admin_settings_kv')
+      .select('key');
+    const existingKeys = new Set((existing || []).map((r: any) => r.key));
+    
+    const required = [
+      { key: 'platform_name', value: 'AtMilan', setting_type: 'string', description: 'App or brand name' },
+      { key: 'site_name', value: 'AtMilan', setting_type: 'string', description: 'Site Name' },
+      { key: 'site_title', value: 'AtMilan', setting_type: 'string', description: 'Browser tab title' },
+      { key: 'community_name', value: 'Lohana', setting_type: 'string', description: 'Primary community name' },
+      { key: 'company_tagline', value: 'Premium Matrimonial Platform', setting_type: 'string', description: 'Tagline' },
+      { key: 'company_website', value: 'www.atmilan.com', setting_type: 'string', description: 'Website URL' },
+      { key: 'company_gstin', value: '', setting_type: 'string', description: 'GST number' },
+      { key: 'invoice_prefix', value: 'AM', setting_type: 'string', description: 'Invoice prefix' },
+      { key: 'invoice_logo', value: '', setting_type: 'image', description: 'Invoice logo' },
+      { key: 'support_whatsapp', value: '', setting_type: 'string', description: 'WhatsApp support' },
+      { key: 'contact_email', value: 'support@atmilan.com', setting_type: 'string', description: 'Support email' },
+      { key: 'contact_phone', value: '+91 98765 43210', setting_type: 'string', description: 'Contact phone' },
+      { key: 'contact_address', value: '123 Matrimony Tower, Mumbai', setting_type: 'string', description: 'Office address' },
+      { key: 'smtp_from_name', value: 'AtMilan', setting_type: 'string', description: 'Email from name' },
+      { key: 'smtp_from_email', value: '', setting_type: 'string', description: 'Email from address' },
+      { key: 'smtp_host', value: 'smtp.gmail.com', setting_type: 'string', description: 'SMTP host' },
+      { key: 'smtp_port', value: '587', setting_type: 'number', description: 'SMTP port' },
+      { key: 'smtp_user', value: '', setting_type: 'string', description: 'SMTP user' },
+      { key: 'smtp_pass', value: '', setting_type: 'password', description: 'SMTP password' },
+      { key: 'master_otp', value: '', setting_type: 'string', description: 'Master OTP for testing' },
+      { key: 'site_logo_image', value: '', setting_type: 'image', description: 'Site logo' },
+      { key: 'site_favicon', value: '', setting_type: 'image', description: 'Favicon URL' },
+      { key: 'facebook_link', value: '#', setting_type: 'string', description: 'Facebook URL' },
+      { key: 'twitter_link', value: '#', setting_type: 'string', description: 'Twitter URL' },
+      { key: 'instagram_link', value: '#', setting_type: 'string', description: 'Instagram URL' },
+      { key: 'youtube_link', value: '#', setting_type: 'string', description: 'YouTube URL' },
+      { key: 'contact_unlock_duration_hours', value: '24', setting_type: 'number', description: 'Contact unlock hours' },
+      { key: 'status_green_days', value: '15', setting_type: 'number', description: 'Green status days' },
+      { key: 'status_yellow_days', value: '15', setting_type: 'number', description: 'Yellow status days' },
+      { key: 'status_red_days', value: '45', setting_type: 'number', description: 'Red status days' },
+      { key: 'reactivation_limit', value: '10', setting_type: 'number', description: 'Max reactivations' },
+      { key: 'inactivity_email_day_1', value: '60', setting_type: 'number', description: 'Inactivity email day 1' },
+      { key: 'inactivity_email_day_2', value: '75', setting_type: 'number', description: 'Inactivity email day 2' },
+      { key: 'inactivity_email_day_3', value: '90', setting_type: 'number', description: 'Inactivity email day 3' },
+      { key: 'hero_description', value: 'Join millions of happy families who found their life partner on AtMilan.', setting_type: 'string', description: 'Hero description' },
+      { key: 'stat_profiles', value: '10K+', setting_type: 'string', description: 'Profiles stat' },
+      { key: 'stat_marriages', value: '500+', setting_type: 'string', description: 'Marriages stat' },
+      { key: 'stat_happy_users', value: '98%', setting_type: 'string', description: 'Happy users stat' },
+      { key: 'stat_years', value: '5+', setting_type: 'string', description: 'Years stat' },
+      { key: 'free_journey_text', value: 'Every member automatically receives 10 free contact unlock credits every month!', setting_type: 'string', description: 'Free registration banner' },
+      { key: 'app_store_link', value: '#', setting_type: 'string', description: 'App Store URL' },
+      { key: 'play_store_link', value: '#', setting_type: 'string', description: 'Play Store URL' },
+      { key: 'sms_api_url', value: '', setting_type: 'string', description: 'SMS API URL' },
+      { key: 'sms_api_key', value: '', setting_type: 'password', description: 'SMS API Key' },
+      { key: 'sms_provider_name', value: '', setting_type: 'string', description: 'SMS Provider Name' },
+      { key: 'firebase_server_key', value: '', setting_type: 'password', description: 'Firebase FCM key' },
+      { key: 'firebase_sender_id', value: '', setting_type: 'string', description: 'Firebase Sender ID' },
+      { key: 'firebase_vapid_key', value: '', setting_type: 'password', description: 'Firebase VAPID key' },
+      { key: 'firebase_project_id', value: '', setting_type: 'string', description: 'Firebase Project ID' },
+      { key: 'firebase_apis', value: '[]', setting_type: 'json', description: 'Firebase API configs' },
+      { key: 'posthog_api_key', value: '', setting_type: 'password', description: 'PostHog API Key' },
+      { key: 'posthog_host', value: 'https://us.i.posthog.com', setting_type: 'string', description: 'PostHog Host' },
+      { key: 'seo_meta_title', value: '', setting_type: 'string', description: 'Meta title' },
+      { key: 'seo_meta_description', value: '', setting_type: 'textarea', description: 'Meta description' },
+      { key: 'seo_meta_keywords', value: '', setting_type: 'textarea', description: 'Meta keywords' },
+      { key: 'seo_og_image', value: '', setting_type: 'image', description: 'OG image' },
+      { key: 'seo_google_site_verification', value: '', setting_type: 'string', description: 'Google verification' },
+      { key: 'seo_bing_site_verification', value: '', setting_type: 'string', description: 'Bing verification' },
+      { key: 'marketing_gtm_id', value: '', setting_type: 'string', description: 'GTM ID' },
+      { key: 'marketing_ga4_id', value: '', setting_type: 'string', description: 'GA4 ID' },
+      { key: 'marketing_fb_pixel', value: '', setting_type: 'string', description: 'FB Pixel ID' },
+      { key: 'marketing_twitter_pixel', value: '', setting_type: 'string', description: 'Twitter Pixel' },
+      { key: 'marketing_linkedin_insight', value: '', setting_type: 'string', description: 'LinkedIn Insight' },
+      { key: 'marketing_custom_head_script', value: '', setting_type: 'textarea', description: 'Custom head script' },
+      { key: 'home_banners', value: '[]', setting_type: 'json', description: 'Home banners' },
+      { key: 'faq_data', value: '[]', setting_type: 'json', description: 'FAQ data' },
+      { key: 'privacy_policy_data', value: '[]', setting_type: 'json', description: 'Privacy policy' },
+      { key: 'terms_data', value: '[]', setting_type: 'json', description: 'Terms data' },
+      { key: 'mission_title', value: 'Our Mission', setting_type: 'string', description: 'Mission title' },
+      { key: 'mission_text_1', value: 'We believe everyone deserves to find their perfect life partner.', setting_type: 'textarea', description: 'Mission text 1' },
+      { key: 'mission_text_2', value: 'Our platform brings together verified profiles from your community.', setting_type: 'textarea', description: 'Mission text 2' },
+      { key: 'gdpr_cookie_notice', value: 'true', setting_type: 'boolean', description: 'Show cookie notice' },
+      { key: 'gdpr_cookie_text', value: 'We use cookies to enhance your experience.', setting_type: 'textarea', description: 'Cookie notice text' },
+      { key: 'auto_green_limit', value: '3', setting_type: 'number', description: 'Auto green limit' },
+      { key: 'free_monthly_views', value: '10', setting_type: 'number', description: 'Free monthly views' },
+    ];
+
+    const toInsert = required.filter((s) => !existingKeys.has(s.key));
+    if (toInsert.length > 0) {
+      const now = new Date().toISOString();
+      const rows = toInsert.map((s) => ({
+        key: s.key,
+        value: s.value,
+        setting_type: s.setting_type,
+        description: s.description,
+        created_at: now,
+        updated_at: now,
+      }));
+      await supabaseAdmin
+        .from('admin_settings_kv')
+        .upsert(rows, { onConflict: 'key' });
+      console.log(`[Bootstrap] Seeded ${rows.length} admin settings into Supabase.`);
+    }
+  } catch (err) {
+    console.warn('[Bootstrap] Could not seed admin settings:', (err as Error).message);
+  }
 
   // Load master OTP from settings
   try {
