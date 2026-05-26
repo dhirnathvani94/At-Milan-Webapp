@@ -36,7 +36,25 @@ export default function AdminDashboard() {
   const { user: adminUser } = useAuthStore();
   const { admin_settings_kv } = useMasterData();
   const brandName = admin_settings_kv?.find((s: any) => s.key === 'platform_name')?.value || 'AtMilan';
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<any>({
+    totalUsers: 0,
+    activeUsers: 0,
+    premiumUsers: 0,
+    revenue: 0,
+    totalRevenue: 0,
+    monthlyRevenue: 0,
+    revenueGrowth: 0,
+    verifiedUsers: 0,
+    unverifiedUsers: 0,
+    inactiveUsers: 0,
+    blockedUsers: 0,
+    pendingDocs: 0,
+    totalInterests: 0,
+    totalTransactions: 0,
+    maleUsers: 0,
+    femaleUsers: 0,
+    activeSubscriptions: 0
+  });
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [pendingDocs, setPendingDocs] = useState<any[]>([]);
   const [groupedPendingDocs, setGroupedPendingDocs] = useState<any[]>([]);
@@ -140,7 +158,7 @@ export default function AdminDashboard() {
       setPendingUnblockRequests(unblockRes);
     } catch (error) {
       console.error('Error fetching admin data:', error);
-      toast.error('Failed to load dashboard data');
+      console.warn('Dashboard data unavailable — showing zeros');
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -174,7 +192,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading && !stats) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">

@@ -342,6 +342,20 @@ async function startServer(): Promise<void> {
   // Bootstrap admin account before accepting requests
   await bootstrapAdmin();
 
+  // Load master OTP from settings
+  try {
+    const db2 = await getDB();
+    const kv2 = db2.admin_settings_kv as Array<{key:string;value:string}>;
+    const masterOtpRow = kv2.find((s: any) => s.key === 'master_otp');
+    if (masterOtpRow?.value) {
+      const { setMasterOTP } = await import('./services/otp.service');
+      setMasterOTP(masterOtpRow.value);
+      console.log('[OTP] Master OTP loaded from admin settings.');
+    }
+  } catch {
+    // Non-fatal
+  }
+
   // Initialise Socket.IO on the HTTP server
   initSocket(httpServer);
 

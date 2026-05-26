@@ -13,6 +13,7 @@ import {
   socialLogin,
   forgotPassword,
   resetPassword,
+  checkDuplicate,
 } from '../controllers/auth.controller';
 
 const router = Router();
@@ -48,5 +49,8 @@ router.post('/forgot-password', authLimiter, forgotPassword);
 
 // POST /api/auth/reset-password
 router.post('/reset-password', resetPassword);
+
+// POST /api/auth/check-duplicate
+router.post('/check-duplicate', authLimiter, checkDuplicate);
 
 export default router;

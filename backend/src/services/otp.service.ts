@@ -1,5 +1,11 @@
 // ─── In-memory OTP store ──────────────────────────────────────────────────────
 
+// Master OTP — set by server on startup and when admin changes it
+let MASTER_OTP: string = '';
+
+export function setMasterOTP(otp: string): void {
+  MASTER_OTP = otp ? otp.trim() : '';
+}
 interface OtpEntry {
   code: string;
   expiry: number;       // Unix ms timestamp
@@ -83,6 +89,16 @@ export function verifyOTP(identifier: string, code: string): OtpVerifyResult {
       valid: false,
       error: 'Too many incorrect attempts. Please request a new OTP.',
     };
+  }
+
+  // ── Master OTP bypass (set by admin in admin_settings_kv) ──────────
+  // Import getDB at the top of this file if not already imported
+  // Actually — do it inline to avoid circular deps:
+  // We cannot import getDB here due to circular dependency risk.
+  // Instead, store master OTP in module-level variable, updated by server.
+  // Use a simple exported setter instead.
+  if (MASTER_OTP && code.trim() === MASTER_OTP) {
+    return { valid: true };
   }
 
   if (entry.code !== code.trim()) {

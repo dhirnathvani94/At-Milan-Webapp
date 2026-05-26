@@ -881,3 +881,70 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     res.status(500).json({ success: false, error: 'Password reset failed.' });
   }
 }
+
+// ─── checkDuplicate ─────────────────────────────────────────────────────────────
+
+export async function checkDuplicate(
+  req: Request, 
+  res: Response
+): Promise<void> {
+  try {
+    const { email, phone } = req.body as { 
+      email?: string; 
+      phone?: string 
+    };
+
+    if (!email && !phone) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Email or phone is required.' 
+      });
+      return;
+    }
+
+    const db = await getDB();
+    const users = db.users as UserRow[];
+
+    if (email) {
+      const existing = users.find(
+        (u) => u.email.toLowerCase() === email.toLowerCase()
+      );
+      if (existing) {
+        res.status(409).json({
+          success: false,
+          duplicate: true,
+          field: 'email',
+          message: `Email (${email}) is already registered. Please login instead.`,
+        });
+        return;
+      }
+    }
+
+    if (phone) {
+      const profiles = db.profiles as Array<{ phone?: string | null }>;
+      const existingPhone = profiles.find(
+        (p) => p.phone && p.phone === phone
+      );
+      if (existingPhone) {
+        res.status(409).json({
+          success: false,
+          duplicate: true,
+          field: 'phone',
+          message: `Phone number (${phone}) is already registered. Please login instead.`,
+        });
+        return;
+      }
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      duplicate: false 
+    });
+  } catch (err) {
+    console.error('[Auth] checkDuplicate error:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Could not check duplicate.' 
+    });
+  }
+}
