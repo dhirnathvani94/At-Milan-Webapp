@@ -36,7 +36,7 @@ export const corsOptions: CorsOptions = {
   },
   credentials: true,                   // Allow Authorization header + cookies
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cache-Control', 'cache-control', 'Pragma', 'X-Cache-Control'],
   exposedHeaders: ['X-Total-Count'],
   maxAge: 86400,                        // Cache preflight for 24 h
 };
