@@ -101,16 +101,22 @@ const SECRET_KEYS = new Set([
 export async function getSettings(req: Request, res: Response): Promise<void> {
   try {
     const db = await getDB();
-    const rows = (db.admin_settings_kv as SettingRow[]).map((s) => {
-      if (SECRET_KEYS.has(s.key)) {
-        return { ...s, value: '', is_secret: true };
-      }
-      return { ...s, is_secret: false };
-    });
-    res.status(200).json({ success: true, settings: rows });
+    const SECRET_KEYS = new Set([
+      'smtp_pass', 'firebase_server_key', 'firebase_vapid_key',
+      'sms_api_key', 'payu_salt', 'cashfree_secret', 'razorpay_key_secret'
+    ]);
+    const settings = (db.admin_settings_kv as any[]).map((s: any, idx: number) => ({
+      id: s.id || `set_${idx}`,
+      setting_key: s.key,
+      setting_value: SECRET_KEYS.has(s.key) ? '' : (s.value ?? ''),
+      setting_type: s.setting_type || 'string',
+      description: s.description || s.key,
+      is_secret: SECRET_KEYS.has(s.key),
+    }));
+    res.status(200).json(settings);
   } catch (err) {
     console.error('[AdminSettings] getSettings error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch settings.' });
+    res.status(200).json([]);
   }
 }
 

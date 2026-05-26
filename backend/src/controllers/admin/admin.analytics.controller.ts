@@ -375,10 +375,10 @@ export async function getSuccessStories(req: Request, res: Response): Promise<vo
     const totalPages = Math.ceil(total / limit);
     const data = stories.slice((page - 1) * limit, page * limit);
 
-    res.status(200).json({ success: true, stories: data, total, page, limit, totalPages });
+    res.status(200).json({ stories: data, totalCount: total });
   } catch (err) {
     console.error('[AdminAnalytics] getSuccessStories error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch success stories.' });
+    res.status(200).json({ stories: [], totalCount: 0 });
   }
 }
 

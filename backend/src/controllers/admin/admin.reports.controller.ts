@@ -126,10 +126,10 @@ export async function getReports(req: Request, res: Response): Promise<void> {
       reported_profile: profilePreview(profiles, r.reported_id),
     }));
 
-    res.status(200).json({ success: true, reports: data, total, page, limit, totalPages });
+    res.status(200).json({ reports: data, totalCount: total });
   } catch (err) {
     console.error('[AdminReports] getReports error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch reports.' });
+    res.status(200).json({ reports: [], totalCount: 0 });
   }
 }
 
@@ -236,10 +236,10 @@ export async function getMessageReports(req: Request, res: Response): Promise<vo
       receiver_profile: profilePreview(profiles, m.receiver_id),
     }));
 
-    res.status(200).json({ success: true, message_reports: data, total, page, limit, totalPages });
+    res.status(200).json({ reports: data, totalCount: total });
   } catch (err) {
     console.error('[AdminReports] getMessageReports error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch message reports.' });
+    res.status(200).json({ reports: [], totalCount: 0 });
   }
 }
 
@@ -331,10 +331,10 @@ export async function getContactMessages(req: Request, res: Response): Promise<v
     const totalPages = Math.ceil(total / limit);
     const data = contacts.slice((page - 1) * limit, page * limit);
 
-    res.status(200).json({ success: true, contacts: data, total, page, limit, totalPages });
+    res.status(200).json({ contacts: data, totalCount: total });
   } catch (err) {
     console.error('[AdminReports] getContactMessages error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch contact messages.' });
+    res.status(200).json({ contacts: [], totalCount: 0 });
   }
 }
 
