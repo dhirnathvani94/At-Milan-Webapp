@@ -10,3 +10,5 @@ coverage/
 .env.production
 database.json
 backend/database.json
+.env.example
+backend/.env.example
