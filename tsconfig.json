@@ -23,4 +23,9 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   }
+  "exclude": [
+    "node_modules",
+    "backend",
+    "server.ts"
+  ]
 }
