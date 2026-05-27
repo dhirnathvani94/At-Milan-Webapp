@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 import { emitToUser } from '../services/socket.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -103,7 +103,9 @@ export async function getMessages(req: Request, res: Response): Promise<void> {
         changed   = true;
       }
     });
-    if (changed) saveDB(db);
+    if (changed) {
+      await saveTable('messages', db.messages as any[]);
+    }
 
     res.status(200).json({ success: true, data, total, page, limit, totalPages });
   } catch (err) {
@@ -183,7 +185,8 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     conversation.last_message_at = now;
     conversation.updated_at      = now;
 
-    saveDB(db);
+    await saveTable('messages', db.messages as any[]);
+    await saveTable('conversations', db.conversations as any[]);
 
     // Real-time delivery to receiver
     emitToUser(receiver_id, 'message:new', {
@@ -246,7 +249,9 @@ export async function markAllRead(req: Request, res: Response): Promise<void> {
       }
     });
 
-    if (count > 0) saveDB(db);
+    if (count > 0) {
+      await saveTable('messages', db.messages as any[]);
+    }
 
     res.status(200).json({ success: true, markedRead: count });
   } catch (err) {

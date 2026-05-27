@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { getDB, saveDB } from "../db/database";
+import { getDB, saveDB, saveTable } from "../db/database";
+import { emitToUser, emitToAdmin } from "../services/socket.service";
 
 interface PurchaseRow {
   id: string;
@@ -124,7 +125,20 @@ export async function purchaseMembership(req: Request, res: Response): Promise<v
       });
     }
 
-    saveDB(db);
+    await saveTable('purchases', db.purchases as any[]);
+    if (plan.credits_included > 0) {
+      await saveTable('credits', db.credits as any[]);
+      await saveTable('credits_history', db.credits_history as any[]);
+    }
+
+    // Real-time: notify user + admin
+    try {
+      emitToUser(userId, 'membership:activated', { expires_at: expiresAt });
+      emitToAdmin('admin:membership-activated', { user_id: userId, expires_at: expiresAt });
+      if (plan.credits_included > 0) {
+        emitToUser(userId, 'credits:updated', {});
+      }
+    } catch {}
 
     res.status(200).json({
       success: true,
@@ -196,7 +210,12 @@ export async function purchaseCredits(req: Request, res: Response): Promise<void
       created_at: new Date().toISOString(),
     });
 
-    saveDB(db);
+    await saveTable('purchases', db.purchases as any[]);
+    await saveTable('credits', db.credits as any[]);
+    await saveTable('credits_history', db.credits_history as any[]);
+
+    // Real-time: notify user their credits changed
+    try { emitToUser(userId, 'credits:updated', { balance: row.balance }); } catch {}
 
     res.status(200).json({
       success: true,

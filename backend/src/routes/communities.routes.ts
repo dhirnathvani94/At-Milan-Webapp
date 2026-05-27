@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { adminLimiter, apiLimiter } from '../middleware/rateLimit';
 
@@ -70,7 +70,7 @@ router.post('/', authenticateToken, requireAdmin, adminLimiter, async (req: Requ
 
     communities.push(newCommunity);
     (db as any).communities = communities;
-    saveDB(db);
+    await saveTable('communities', communities);
 
     res.status(201).json({ success: true, community: newCommunity });
   } catch (err) {
@@ -117,7 +117,7 @@ router.put('/:id', authenticateToken, requireAdmin, adminLimiter, async (req: Re
     communities[idx].updated_at = new Date().toISOString();
 
     (db as any).communities = communities;
-    saveDB(db);
+    await saveTable('communities', communities);
 
     res.status(200).json({ success: true, community: communities[idx] });
   } catch (err) {
@@ -150,7 +150,7 @@ router.delete('/:id', authenticateToken, requireAdmin, adminLimiter, async (req:
     }
 
     (db as any).communities = communities.filter((c: any) => c.id !== id);
-    saveDB(db);
+    await saveTable('communities', (db as any).communities);
 
     res.status(200).json({ success: true, message: 'Community deleted.' });
   } catch (err) {
@@ -185,7 +185,7 @@ router.patch('/:id/toggle', authenticateToken, requireAdmin, adminLimiter, async
     communities[idx].updated_at = new Date().toISOString();
 
     (db as any).communities = communities;
-    saveDB(db);
+    await saveTable('communities', communities);
 
     res.status(200).json({ success: true, community: communities[idx] });
   } catch (err) {

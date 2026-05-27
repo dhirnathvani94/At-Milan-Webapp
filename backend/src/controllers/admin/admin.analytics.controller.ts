@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../../db/database';
+import { getDB, saveDB, saveTable } from '../../db/database';
 import { createAuditLog } from '../../services/audit.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -404,7 +404,7 @@ export async function updateSuccessStory(req: Request, res: Response): Promise<v
     }
 
     stories[idx] = { ...stories[idx]!, ...updates, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('success_stories', db.success_stories as any[]);
 
     createAuditLog({
       action: 'profile_updated',
@@ -438,7 +438,7 @@ export async function deleteSuccessStory(req: Request, res: Response): Promise<v
     }
 
     stories.splice(idx, 1);
-    saveDB(db);
+    await saveTable('success_stories', db.success_stories as any[]);
 
     // Emit real-time socket event
     try {
@@ -485,7 +485,7 @@ export async function approveSuccessStory(req: Request, res: Response): Promise<
       approved_at: now,
       updated_at: now,
     };
-    saveDB(db);
+    await saveTable('success_stories', db.success_stories as any[]);
 
     // Emit real-time socket event
     try {
@@ -523,7 +523,7 @@ export async function setStoryVisibility(req: Request, res: Response): Promise<v
     }
 
     stories[idx] = { ...stories[idx]!, is_visible: visible, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('success_stories', db.success_stories as any[]);
 
     // Emit real-time socket event
     try {
@@ -595,7 +595,7 @@ export async function createCoupon(req: Request, res: Response): Promise<void> {
     };
 
     (db.coupons as unknown[]).push(coupon);
-    saveDB(db);
+    await saveTable('coupons', db.coupons as any[]);
 
     createAuditLog({
       action: 'profile_updated',
@@ -638,7 +638,7 @@ export async function updateCoupon(req: Request, res: Response): Promise<void> {
     if (updates.code) updates.code = (updates.code as string).toUpperCase();
 
     coupons[idx] = { ...coupons[idx]!, ...updates, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('coupons', db.coupons as any[]);
 
     createAuditLog({
       action: 'profile_updated',
@@ -672,7 +672,7 @@ export async function deleteCoupon(req: Request, res: Response): Promise<void> {
     }
 
     coupons.splice(idx, 1);
-    saveDB(db);
+    await saveTable('coupons', db.coupons as any[]);
 
     createAuditLog({
       action: 'account_deleted',

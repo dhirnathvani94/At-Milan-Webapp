@@ -160,6 +160,70 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     })
 
+    // ── Additional event listeners ────────────────────────────────────────────
+
+    // interest:received is what the backend emits — alias to interest:new so
+    // any component listening on interest:new also receives it.
+    socket.on('interest:received', (data: any) => {
+      socket.emit('interest:new', data);
+    });
+
+    // interest:updated — sender gets notified when interest is accepted/declined
+    socket.on('interest:updated', (data: any) => {
+      window.dispatchEvent(new CustomEvent('interest:updated', { detail: data }));
+    });
+
+    // notification:new — refresh notification badge / count
+    socket.on('notification:new', (data: any) => {
+      window.dispatchEvent(new CustomEvent('notification:new', { detail: data }));
+    });
+
+    // plans:updated — refresh plans when admin creates/updates/deletes them
+    socket.on('plans:updated', (data: any) => {
+      window.dispatchEvent(new CustomEvent('plans:updated', { detail: data }));
+    });
+
+    // shortlist:updated — someone added/removed you from their shortlist
+    socket.on('shortlist:updated', (data: any) => {
+      window.dispatchEvent(new CustomEvent('shortlist:updated', { detail: data }));
+    });
+
+    // account:verified — when admin approves user profile verification
+    socket.on('account:verified', (_data: any) => {
+      const authStore = useAuthStore.getState();
+      if (authStore.profile) {
+        authStore.setProfile({ ...authStore.profile, is_verified: true });
+      }
+    });
+
+    // account:status-changed — when admin blocks / unblocks a user
+    socket.on('account:status-changed', (data: any) => {
+      if (data?.is_active === false) {
+        useAuthStore.getState().logout();
+      }
+    });
+
+    // membership:activated — refresh profile + credits after membership purchase
+    socket.on('membership:activated', (_data: any) => {
+      const authStore = useAuthStore.getState();
+      if (authStore.user) {
+        authStore.refreshProfile();
+        authStore.refreshCredits();
+      }
+    });
+
+    // profile:viewed — notify user that someone viewed their profile
+    socket.on('profile:viewed', (data: any) => {
+      window.dispatchEvent(new CustomEvent('profile:viewed', { detail: data }));
+    });
+
+    // profile:section-updated — merge updated section data into profile store
+    socket.on('profile:section-updated', (data: any) => {
+      const authStore = useAuthStore.getState();
+      if (authStore.user && data?.profile) {
+        authStore.setProfile({ ...authStore.profile, ...data.profile });
+      }
+    });
 
     set({ socket })
   },

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 import { emitToUser, emitToAdmin } from '../services/socket.service';
 import { createNotification } from './notification.controller';
 
@@ -104,7 +104,7 @@ export async function sendInterest(req: Request, res: Response): Promise<void> {
     };
 
     interests.push(interest);
-    saveDB(db);
+    await saveTable('interests', db.interests as any[]);
 
     // Get sender profile for notification payload
     const profiles  = db.profiles as ProfileRow[];
@@ -113,17 +113,23 @@ export async function sendInterest(req: Request, res: Response): Promise<void> {
       ? `${senderProfile.first_name} ${senderProfile.last_name}`
       : 'Someone';
 
-    // Real-time: notify receiver
-    emitToUser(receiver_id, 'interest:received', {
-      interest,
-      sender: senderProfile ? profilePreview(senderProfile) : null,
-    });
-
-    // Real-time: notify admin room
-    emitToAdmin('admin:interest-sent', {
-      interest,
-      senderName,
-    });
+    // Real-time: notify receiver with BOTH event names (backend=received, frontend may listen for :new)
+    try {
+      emitToUser(receiver_id, 'interest:received', {
+        interest,
+        sender: senderProfile ? profilePreview(senderProfile) : null,
+      });
+      emitToUser(receiver_id, 'interest:new', {
+        interest,
+        sender: senderProfile ? profilePreview(senderProfile) : null,
+      });
+      emitToUser(receiver_id, 'notification:new', {
+        type: 'interest',
+        message: `${senderName} sent you an interest`,
+      });
+      // Real-time: notify admin room
+      emitToAdmin('admin:interest-sent', { interest, senderName });
+    } catch { /* socket errors must never kill the HTTP response */ }
 
     // Persistent notification for receiver
     createNotification(
@@ -178,7 +184,7 @@ export async function respondToInterest(req: Request, res: Response): Promise<vo
 
     interest.status     = status;
     interest.updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('interests', db.interests as any[]);
 
     // Get receiver profile for notification
     const profiles       = db.profiles as ProfileRow[];
@@ -188,11 +194,19 @@ export async function respondToInterest(req: Request, res: Response): Promise<vo
       : 'Someone';
 
     // Real-time: notify sender
-    const event = status === 'accepted' ? 'interest:accepted' : 'interest:declined';
-    emitToUser(interest.sender_id, event, {
-      interest,
-      receiver: receiverProfile ? profilePreview(receiverProfile) : null,
-    });
+    try {
+      const event = status === 'accepted' ? 'interest:accepted' : 'interest:declined';
+      emitToUser(interest.sender_id, event, {
+        interest,
+        receiver: receiverProfile ? profilePreview(receiverProfile) : null,
+      });
+      // Generic interest:updated for any component listening
+      emitToUser(interest.sender_id, 'interest:updated', { interest });
+      emitToUser(interest.sender_id, 'notification:new', {
+        type: 'interest_response',
+        message: `Your interest was ${status}`,
+      });
+    } catch { /* socket errors must never kill the HTTP response */ }
 
     // Persistent notification for sender
     const title   = status === 'accepted' ? 'Interest Accepted!' : 'Interest Declined';
@@ -400,7 +414,7 @@ export async function deleteInterest(req: Request, res: Response): Promise<void>
     }
 
     interests.splice(idx, 1);
-    saveDB(db);
+    await saveTable('interests', db.interests as any[]);
 
     res.status(200).json({ success: true, message: 'Interest deleted.' });
   } catch (err) {

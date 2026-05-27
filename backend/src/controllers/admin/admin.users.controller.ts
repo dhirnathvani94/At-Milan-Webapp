@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../../db/database';
+import { getDB, saveDB, saveTable } from '../../db/database';
 import { emitToUser, emitToAdmin } from '../../services/socket.service';
 import { createAuditLog } from '../../services/audit.service';
 import { documentUpload } from '../profile.controller';
@@ -110,7 +110,8 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     const wasActive = users[idx]!.is_active;
     const wasVerified = (db.profiles as ProfileRow[]).find(p => p.user_id === userId)?.is_verified ?? false;
     users[idx] = { ...users[idx]!, ...updates, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
+    await saveTable('profiles', db.profiles as any[]);
     // Emit status-changed when active flag changes
     if (updates['is_active']!==undefined && updates['is_active']!==wasActive) {
       emitToUser(userId,'account:status-changed',{is_active:users[idx]!.is_active});
@@ -141,7 +142,7 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
     const profiles = db.profiles as ProfileRow[];
     const pIdx = profiles.findIndex(p=>p.user_id===userId);
     if (pIdx!==-1) profiles[pIdx] = { ...profiles[pIdx]!, first_name:'Deleted', last_name:'User', phone:null, updated_at:now };
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
     createAuditLog({action:'account_deleted',actor_id:adminId,resource_type:'user',resource_id:userId,severity:'critical'});
     emitToUser(userId,'account:deleted',{});
     res.status(200).json({ success:true, message:'User soft-deleted and anonymised (GDPR).' });
@@ -160,7 +161,8 @@ export async function adjustCredits(req: Request, res: Response): Promise<void> 
     row.balance = type==='credit' ? row.balance+amount : row.balance-amount;
     row.updated_at = new Date().toISOString();
     history.push({id:uuidv4(),user_id:userId,type,amount,reason,reference_id:adminId,balance_after:row.balance,created_at:new Date().toISOString()});
-    saveDB(db);
+    await saveTable('credits', db.credits as any[]);
+    await saveTable('credits_history', db.credits_history as any[]);
     createAuditLog({action:'credits_adjusted',actor_id:adminId,resource_type:'user',resource_id:userId,details:{type,amount,reason,new_balance:row.balance},severity:'warning'});
     emitToUser(userId,'credits:updated',{balance:row.balance,type,amount,reason});
     res.status(200).json({ success:true, newBalance:row.balance, adjustment:{type,amount,reason} });
@@ -176,7 +178,7 @@ export async function setPremium(req: Request, res: Response): Promise<void> {
     const expiresAt = new Date(Date.now()+duration_days*24*60*60*1000).toISOString();
     const purchase = { id:uuidv4(), user_id:userId, type:'membership', plan_id:plan_id??null, amount:0, currency:'INR', credits_added:0, gateway_id:'admin', gateway_order_id:null, gateway_payment_id:null, gateway_signature:null, status:'completed', expires_at:expiresAt, created_at:new Date().toISOString(), updated_at:new Date().toISOString() };
     (db.purchases as unknown[]).push(purchase);
-    saveDB(db);
+    await saveTable('purchases', db.purchases as any[]);
     createAuditLog({action:'profile_updated',actor_id:adminId,resource_type:'user',resource_id:userId,details:{action:'set_premium',expires_at:expiresAt},severity:'info'});
     emitToUser(userId,'membership:activated',{expires_at:expiresAt});
     res.status(200).json({ success:true, message:'Premium activated.', expires_at:expiresAt });
@@ -190,7 +192,9 @@ export async function removePremium(req: Request, res: Response): Promise<void> 
     const purchases = db.purchases as Array<{user_id:string;type:string;status:string;expires_at:string|null;updated_at:string}>;
     let changed = false;
     purchases.forEach(p => { if (p.user_id===userId&&p.type==='membership'&&p.status==='completed') { p.status='refunded'; p.expires_at=null; p.updated_at=new Date().toISOString(); changed=true; } });
-    if (changed) saveDB(db);
+    if (changed) {
+      await saveTable('purchases', db.purchases as any[]);
+    }
     createAuditLog({action:'profile_updated',actor_id:adminId,resource_type:'user',resource_id:userId,details:{action:'remove_premium'},severity:'warning'});
     emitToUser(userId,'membership:deactivated',{});
     res.status(200).json({ success:true, message:'Premium removed.' });
@@ -205,7 +209,8 @@ export async function approveAllDocuments(req: Request, res: Response): Promise<
     const profiles = db.profiles as ProfileRow[];
     const p = profiles.find(pr=>pr.user_id===userId);
     if (p) p.is_verified = true;
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
+    await saveTable('profiles', db.profiles as any[]);
     createAuditLog({action:'document_approved',actor_id:adminId,resource_type:'user',resource_id:userId,details:{count},severity:'info'});
     emitToUser(userId,'documents:all-approved',{count});
     res.status(200).json({ success:true, message:`${count} document(s) approved. Profile verified.`, count });
@@ -228,7 +233,7 @@ export async function updateDocumentStatus(req: Request, res: Response): Promise
     if (!['pending','approved','rejected'].includes(status)) { res.status(400).json({success:false,error:'Invalid status.'}); return; }
     const db = await getDB(); const docs = db.documents as DocumentRow[]; const now = new Date().toISOString(); let count = 0;
     docs.forEach(d => { if (d.user_id===userId&&d.type===docType) { d.status=status as DocumentRow['status']; d.reviewed_by=adminId; d.reviewed_at=now; d.updated_at=now; if (status==='rejected'&&reason) d.rejection_reason=reason; else d.rejection_reason=null; count++; } });
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
     res.status(200).json({ success:true, message:`${count} document(s) updated to ${status}.` });
   } catch(err) { res.status(500).json({success:false,error:'Could not update document status.'}); }
 }
@@ -243,7 +248,7 @@ export async function uploadDocumentForUser(req: Request, res: Response): Promis
       const db = await getDB();
       const doc = { id:uuidv4(), user_id:userId, type:docType, filename:req.file.filename, url:`/uploads/documents/${req.file.filename}`, status:'pending', created_at:new Date().toISOString() };
       (db.documents as unknown[]).push(doc);
-      saveDB(db);
+      await saveTable('documents', db.documents as any[]);
       res.status(201).json({ success:true, document:doc });
     } catch(e) { res.status(500).json({success:false,error:'Could not save document.'}); }
   });
@@ -278,7 +283,7 @@ export async function deleteUserDocument(req: Request, res: Response): Promise<v
     const toDelete = docs.filter(d=>d.user_id===userId&&d.type===docType);
     toDelete.forEach(d => { const fp=path.resolve(__dirname,'../../../uploads/documents',d.filename); if (fs.existsSync(fp)) try { fs.unlinkSync(fp); } catch {} });
     db.documents = docs.filter(d=>!(d.user_id===userId&&d.type===docType));
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
     res.status(200).json({ success:true, message:`${toDelete.length} document(s) deleted.` });
   } catch(err) { res.status(500).json({success:false,error:'Could not delete document.'}); }
 }

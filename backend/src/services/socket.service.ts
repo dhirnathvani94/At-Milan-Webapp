@@ -28,9 +28,28 @@ interface AuthenticatedSocket extends Socket {
 export function initSocket(httpServer: HttpServer): SocketIOServer {
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: env.IS_DEVELOPMENT
-        ? [env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000']
-        : [env.FRONTEND_URL],
+      origin: (origin: string | undefined, callback: Function) => {
+        // Allow no origin (mobile apps, Postman)
+        if (!origin) return callback(null, true);
+        // Allow exact match
+        if (origin === env.FRONTEND_URL) return callback(null, true);
+        // Allow all Vercel preview URLs for this project (atmilan-frontend-*)
+        if (/^https:\/\/atmilan-frontend.*\.vercel\.app$/.test(origin)) {
+          return callback(null, true);
+        }
+        // Allow all at-milan-* Vercel preview URLs
+        if (/^https:\/\/at-milan.*\.vercel\.app$/.test(origin)) {
+          return callback(null, true);
+        }
+        // Allow localhost in development
+        if (env.IS_DEVELOPMENT && (
+          origin.includes('localhost') || origin.includes('127.0.0.1')
+        )) {
+          return callback(null, true);
+        }
+        // Block everything else
+        callback(new Error(`Socket CORS blocked: ${origin}`));
+      },
       credentials: true,
     },
     pingTimeout: 60000,

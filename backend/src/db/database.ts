@@ -213,24 +213,44 @@ async function fetchTable(table: keyof Database): Promise<DbTable> {
   }
 }
 
+// ─── In-memory cache ─────────────────────────────────────────────────────────
+
+let _cache: Database | null = null;
+let _cacheTime = 0;
+const CACHE_TTL = 30_000; // 30 seconds
+
+// ─── invalidateCache ─────────────────────────────────────────────────────────
+
+/**
+ * Clears the in-memory DB cache so the next getDB() call fetches fresh data
+ * from Supabase. Call this after any write operation.
+ */
+export function invalidateCache(): void {
+  _cache = null;
+  _cacheTime = 0;
+}
+
 // ─── getDB ────────────────────────────────────────────────────────────────────
 
 /**
  * Fetches ALL rows from every Supabase table in parallel and returns them
- * as a typed Database object.
+ * as a typed Database object. Results are cached for 30 seconds so
+ * repeated requests within the same window return instantly.
  *
  * If any individual table fetch fails, that table is returned as an empty
  * array and the error is logged — getDB() never throws.
  */
 export async function getDB(): Promise<Database> {
+  const now = Date.now();
+  if (_cache && (now - _cacheTime) < CACHE_TTL) {
+    return { ..._cache } as Database;
+  }
   const results = await Promise.all(TABLE_NAMES.map(fetchTable));
-
   const db = { ...EMPTY_DB } as Database;
-  TABLE_NAMES.forEach((name, i) => {
-    db[name] = results[i];
-  });
-
-  return db;
+  TABLE_NAMES.forEach((name, i) => { db[name] = results[i]; });
+  _cache = db;
+  _cacheTime = now;
+  return { ...db } as Database;
 }
 
 // ─── getDBSync ────────────────────────────────────────────────────────────────
@@ -256,41 +276,71 @@ export function getDBSync(): Database {
 // ─── saveDB ───────────────────────────────────────────────────────────────────
 
 /**
- * Persists a full Database snapshot back to Supabase.
+ * Persists a Database snapshot to Supabase.
  *
- * For every table in the Database object, all rows are upserted using the
- * `id` column as the conflict target.  Each table is wrapped in its own
- * try/catch so a failure on one table never blocks the rest.
+ * Invalidates cache, then runs all table upserts in PARALLEL via
+ * Promise.allSettled for maximum speed. Only rows with a valid id or key
+ * field are upserted. Errors are logged but never thrown.
  *
- * Errors are logged to the console but never thrown.
- *
- * @param data - The full Database object returned by getDB() (and mutated
- *               in-place by controllers before being passed here).
+ * @param data - The full Database object mutated by a controller.
  */
 export async function saveDB(data: Database): Promise<void> {
-  for (const table of TABLE_NAMES) {
-    const rows: DbTable = data[table];
+  invalidateCache();
 
-    // Nothing to upsert for this table — skip it.
+  const writeTasks: Promise<void>[] = [];
+
+  for (const table of TABLE_NAMES) {
+    const rows = data[table] as any[];
     if (!Array.isArray(rows) || rows.length === 0) continue;
 
-    try {
-      const { error } = await supabaseAdmin
-        .from(table as string)
-        .upsert(rows, { onConflict: 'id' });
+    const validRows = rows.filter((r: any) => r && (r.id || r.key));
+    if (validRows.length === 0) continue;
 
-      if (error) {
-        console.error(
-          `[DB] saveDB — error upserting table "${table}":`,
-          error.message
-        );
-      }
-    } catch (err) {
-      console.error(
-        `[DB] saveDB — unexpected error on table "${table}":`,
-        (err as Error).message
-      );
-    }
+    const task = supabaseAdmin
+      .from(table as string)
+      .upsert(validRows, { onConflict: 'id' })
+      .then(({ error }) => {
+        if (error) {
+          console.error(`[DB] saveDB error on "${table}":`, error.message);
+        }
+      })
+      .catch((err: Error) => {
+        console.error(`[DB] saveDB unexpected on "${table}":`, err.message);
+      });
+
+    writeTasks.push(task);
+  }
+
+  await Promise.allSettled(writeTasks);
+}
+
+// ─── saveTable ────────────────────────────────────────────────────────────────
+
+/**
+ * Fast single-table write — much faster than saveDB().
+ *
+ * Invalidates cache, filters out invalid rows, then upserts only the
+ * specified table. Uses 'key' as the conflict column for admin_settings_kv
+ * and 'id' for all other tables. Errors are logged but never thrown.
+ *
+ * @param table - The table to upsert into.
+ * @param rows  - The rows to upsert.
+ */
+export async function saveTable(
+  table: keyof Database,
+  rows: any[]
+): Promise<void> {
+  invalidateCache();
+  try {
+    const validRows = rows.filter((r: any) => r && (r.id || r.key));
+    if (validRows.length === 0) return;
+    const conflictCol = table === 'admin_settings_kv' ? 'key' : 'id';
+    const { error } = await supabaseAdmin
+      .from(table as string)
+      .upsert(validRows, { onConflict: conflictCol });
+    if (error) console.error(`[DB] saveTable error on "${table}":`, error.message);
+  } catch (err: any) {
+    console.error(`[DB] saveTable unexpected on "${table}":`, err.message);
   }
 }
 

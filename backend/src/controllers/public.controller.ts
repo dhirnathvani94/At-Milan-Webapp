@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 import { sendEmail } from '../services/email.service';
 import { isUserOnline } from '../services/socket.service';
 
@@ -148,7 +148,7 @@ export async function shareSuccessStory(req: Request, res: Response): Promise<vo
     };
 
     (db.success_stories as SuccessStoryRow[]).push(entry);
-    saveDB(db);
+    await saveTable('success_stories', db.success_stories as any[]);
 
     res.status(201).json({
       success: true,
@@ -196,7 +196,7 @@ export async function submitContact(req: Request, res: Response): Promise<void> 
     };
 
     (db.contact_messages as ContactMessageRow[]).push(entry);
-    saveDB(db);
+    await saveTable('contact_messages', db.contact_messages as any[]);
 
     // Send email to admin — non-blocking
     const adminEmail = (await getAdminSetting('admin_contact_email')) ||
@@ -381,7 +381,7 @@ export async function registerFCMToken(req: Request, res: Response): Promise<voi
       });
     }
 
-    saveDB(db);
+    await saveTable('fcm_tokens', db.fcm_tokens as any[]);
 
     res.status(200).json({ success: true, message: 'FCM token registered.' });
   } catch (err) {
@@ -409,7 +409,9 @@ export async function unregisterFCMToken(req: Request, res: Response): Promise<v
     );
     const removed = before - (db.fcm_tokens as FcmTokenRow[]).length;
 
-    if (removed > 0) saveDB(db);
+    if (removed > 0) {
+      await saveTable('fcm_tokens', db.fcm_tokens as any[]);
+    }
 
     res.status(200).json({ success: true, message: 'FCM token unregistered.' });
   } catch (err) {

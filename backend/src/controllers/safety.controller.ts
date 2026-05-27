@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { getDB, saveDB } from "../db/database";
+import { getDB, saveDB, saveTable } from "../db/database";
 import { createAuditLog } from "../services/audit.service";
 import { emitToAdmin } from "../services/socket.service";
 
@@ -66,7 +66,7 @@ export async function reportUser(req: Request, res: Response): Promise<void> {
     };
 
     (db.reports as ReportRow[]).push(report);
-    saveDB(db);
+    await saveTable('reports', db.reports as any[]);
 
     emitToAdmin("admin:user-reported", { report });
     createAuditLog({
@@ -115,7 +115,7 @@ export async function reportMessage(req: Request, res: Response): Promise<void> 
     };
 
     (db.reports as ReportRow[]).push(report);
-    saveDB(db);
+    await saveTable('reports', db.reports as any[]);
 
     emitToAdmin("admin:message-reported", { report });
 
@@ -158,7 +158,7 @@ export async function blockUser(req: Request, res: Response): Promise<void> {
     };
 
     blocks.push(block);
-    saveDB(db);
+    await saveTable('user_blocks', db.user_blocks as any[]);
 
     createAuditLog({
       action: "user_blocked",
@@ -196,7 +196,7 @@ export async function unblockUser(req: Request, res: Response): Promise<void> {
     }
 
     blocks.splice(idx, 1);
-    saveDB(db);
+    await saveTable('user_blocks', db.user_blocks as any[]);
 
     createAuditLog({
       action: "user_unblocked",
@@ -275,7 +275,7 @@ export async function reportViolation(req: Request, res: Response): Promise<void
     };
 
     (db.reports as ReportRow[]).push(report);
-    saveDB(db);
+    await saveTable('reports', db.reports as any[]);
 
     emitToAdmin("admin:violation-reported", { report });
     createAuditLog({
@@ -332,7 +332,7 @@ export async function submitUnblockRequest(req: Request, res: Response): Promise
     };
 
     (db.unblock_requests as UnblockRequestRow[]).push(request);
-    saveDB(db);
+    await saveTable('unblock_requests', db.unblock_requests as any[]);
 
     emitToAdmin("admin:unblock-request", { request });
 

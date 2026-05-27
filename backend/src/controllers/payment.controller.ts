@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 import { emitToAdmin } from '../services/socket.service';
 import { createAuditLog } from '../services/audit.service';
 import { createNotification } from './notification.controller';
@@ -121,7 +121,8 @@ async function addCreditsToUser(
     created_at:    new Date().toISOString(),
   });
 
-  await saveDB(db);
+  await saveTable('credits', db.credits as any[]);
+  await saveTable('credits_history', db.credits_history as any[]);
 }
 
 // ─── getActiveGateway ─────────────────────────────────────────────────────────
@@ -248,7 +249,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     };
 
     (db.purchases as PurchaseRow[]).push(purchase);
-    saveDB(db);
+    await saveTable('purchases', db.purchases as any[]);
 
     // Return ONLY public data — key_secret never leaves the server
     res.status(201).json({
@@ -361,7 +362,7 @@ export async function verifyPayment(req: Request, res: Response): Promise<void> 
       }
     }
 
-    await saveDB(db);
+    await saveTable('purchases', db.purchases as any[]);
 
     // ── Audit + socket ─────────────────────────────────────────────────────
     createAuditLog({

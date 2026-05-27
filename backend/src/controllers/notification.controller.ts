@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
+import { emitToUser } from '../services/socket.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,7 +42,9 @@ export async function createNotification(
       created_at: new Date().toISOString(),
     };
     (db.notifications as NotificationRow[]).push(notification);
-    saveDB(db);
+    await saveTable('notifications', db.notifications as any[]);
+    // Real-time push to the user
+    try { emitToUser(userId, 'notification:new', notification); } catch {}
   } catch (err) {
     console.error('[Notification] createNotification error:', (err as Error).message);
   }
@@ -107,7 +110,7 @@ export async function markAsRead(req: Request, res: Response): Promise<void> {
     }
 
     notification.is_read = true;
-    saveDB(db);
+    await saveTable('notifications', db.notifications as any[]);
 
     res.status(200).json({ success: true, notification });
   } catch (err) {
@@ -138,7 +141,7 @@ export async function markAllAsRead(req: Request, res: Response): Promise<void> 
       }
     });
 
-    saveDB(db);
+    await saveTable('notifications', db.notifications as any[]);
 
     res.status(200).json({ success: true, message: `${count} notification(s) marked as read.` });
   } catch (err) {
@@ -164,7 +167,7 @@ export async function clearAll(req: Request, res: Response): Promise<void> {
       (n) => n.user_id !== userId
     );
     const deleted = before - (db.notifications as NotificationRow[]).length;
-    saveDB(db);
+    await saveTable('notifications', db.notifications as any[]);
 
     res.status(200).json({ success: true, message: `${deleted} notification(s) cleared.` });
   } catch (err) {

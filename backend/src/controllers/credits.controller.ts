@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,7 +100,7 @@ export async function getCredits(req: Request, res: Response): Promise<void> {
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 20);
 
-    saveDB(db); // persist if row was just created
+    await saveTable('credits', db.credits as any[]); // persist if row was just created
 
     res.status(200).json({
       success: true,
@@ -199,7 +199,8 @@ export async function revealContact(req: Request, res: Response): Promise<void> 
       target_user_id
     );
 
-    saveDB(db);
+    await saveTable('credits', db.credits as any[]);
+    await saveTable('credits_history', db.credits_history as any[]);
 
     res.status(200).json({
       success: true,

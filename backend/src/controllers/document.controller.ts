@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ export async function uploadDocument(req: Request, res: Response): Promise<void>
 
       const db = await getDB();
       (db.documents as DocumentRow[]).push(doc);
-      saveDB(db);
+      await saveTable('documents', db.documents as any[]);
 
       res.status(201).json({ success: true, document: doc });
     } catch (saveErr) {
@@ -231,8 +231,7 @@ export async function replaceDocument(req: Request, res: Response): Promise<void
       doc.reviewed_by      = null;
       doc.reviewed_at      = null;
       doc.updated_at       = new Date().toISOString();
-
-      saveDB(db);
+      await saveTable('documents', db.documents as any[]);
 
       res.status(200).json({ success: true, document: doc });
     } catch (saveErr) {

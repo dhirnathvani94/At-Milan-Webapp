@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
+import { emitToUser } from '../services/socket.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,8 @@ export async function toggleShortlist(req: Request, res: Response): Promise<void
     if (idx !== -1) {
       // Already shortlisted — remove it
       shortlists.splice(idx, 1);
-      saveDB(db);
+      await saveTable('shortlists', db.shortlists as any[]);
+      try { emitToUser(target_id, 'shortlist:updated', { action: 'removed', by_user_id: userId }); } catch {}
       res.status(200).json({ success: true, added: false, message: 'Removed from shortlist.' });
       return;
     }
@@ -93,7 +95,8 @@ export async function toggleShortlist(req: Request, res: Response): Promise<void
     };
 
     shortlists.push(entry);
-    saveDB(db);
+    await saveTable('shortlists', db.shortlists as any[]);
+    try { emitToUser(target_id, 'shortlist:updated', { action: 'added', by_user_id: userId }); } catch {}
 
     res.status(201).json({ success: true, added: true, message: 'Added to shortlist.', entry });
   } catch (err) {
@@ -175,7 +178,8 @@ export async function removeFromShortlist(req: Request, res: Response): Promise<
     }
 
     shortlists.splice(idx, 1);
-    saveDB(db);
+    await saveTable('shortlists', db.shortlists as any[]);
+    try { emitToUser(targetId, 'shortlist:updated', { action: 'removed', by_user_id: userId }); } catch {}
 
     res.status(200).json({ success: true, message: 'Removed from shortlist.' });
   } catch (err) {

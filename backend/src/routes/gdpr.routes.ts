@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/auth';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 import { createAuditLog } from '../services/audit.service';
 
 const router = Router();
@@ -106,7 +106,7 @@ router.post('/consent', async (req: Request, res: Response): Promise<void> => {
       kv.push({ key, value: String(granted) });
     }
 
-    saveDB(db);
+    await saveTable('admin_settings_kv', db.admin_settings_kv as any[]);
 
     createAuditLog({
       action:        'profile_updated',
@@ -363,7 +363,17 @@ router.post('/delete', async (req: Request, res: Response): Promise<void> => {
     // Purchases and audit_logs are retained for legal/financial compliance
     // but the user row is anonymised so PII is removed
 
-    saveDB(db);
+    await Promise.all([
+      saveTable('users',              db.users              as any[]),
+      saveTable('profiles',           db.profiles           as any[]),
+      saveTable('messages',           db.messages           as any[]),
+      saveTable('notifications',      db.notifications      as any[]),
+      saveTable('shortlists',         db.shortlists         as any[]),
+      saveTable('profile_views',      db.profile_views      as any[]),
+      saveTable('fcm_tokens',         db.fcm_tokens         as any[]),
+      saveTable('otps',               db.otps               as any[]),
+      saveTable('admin_settings_kv',  db.admin_settings_kv  as any[]),
+    ]);
 
     createAuditLog({
       action:        'account_deleted',

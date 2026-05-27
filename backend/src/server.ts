@@ -21,7 +21,7 @@ import { apiLimiter } from './middleware/rateLimit';
 import { authenticateToken } from './middleware/auth';
 
 // ─── Database ─────────────────────────────────────────────────────────────────
-import { getDB, saveDB, supabaseAdmin } from './db/database';
+import { getDB, saveDB, saveTable, supabaseAdmin } from './db/database';
 
 // ─── Socket ───────────────────────────────────────────────────────────────────
 import { initSocket } from './services/socket.service';
@@ -85,7 +85,7 @@ app.use(
         defaultSrc:  ["'self'"],
         scriptSrc:   ["'self'"],
         styleSrc:    ["'self'", "'unsafe-inline'"],
-        imgSrc:      ["'self'", 'data:', 'blob:'],
+        imgSrc:      ["'self'", 'data:', 'blob:', 'https://*.supabase.co', 'https://supabase.co'],
         connectSrc:  ["'self'"],
         fontSrc:     ["'self'"],
         objectSrc:   ["'none'"],
@@ -298,7 +298,8 @@ app.post('/api/match-confirmation-email', async (req: Request, res: Response) =>
         status: 'pending', created_at: new Date().toISOString()
       });
     }
-    await saveDB(db);
+    await saveTable('profiles', db.profiles as any[]);
+    await saveTable('match_confirmations', (db as any).match_confirmations);
     res.json({ success: true, status: newStatus });
   } catch (err: any) { res.status(500).json({ error: err.message || 'Failed' }); }
 });
@@ -348,7 +349,8 @@ app.post('/api/admin/reactivation/:requestId/decision', authenticateToken, async
         profile.reactivation_rejection_remark = remark || '';
       }
     }
-    await saveDB(db);
+    await saveTable('reactivation_requests', (db as any).reactivation_requests || []);
+    await saveTable('profiles', db.profiles as any[]);
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: err.message || 'Failed' }); }
 });
@@ -411,7 +413,8 @@ app.post('/api/admin/notifications/:notifId/mark-read', async (req: Request, res
       notif.is_read = true;
       const adminNotif = ((db as any).admin_notifications as any[] || []).find((n: any) => n.id === req.params.notifId);
       if (adminNotif) adminNotif.read_count = (adminNotif.read_count || 0) + 1;
-      await saveDB(db);
+      await saveTable('notifications', db.notifications as any[]);
+      if (adminNotif) await saveTable('admin_notifications', (db as any).admin_notifications || []);
     }
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -590,7 +593,8 @@ async function bootstrapAdmin(): Promise<void> {
       console.warn('[Bootstrap] Could not seed admin_managers:', (seedErr as Error).message);
     }
 
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
+    await saveTable('admin_managers', (db as any).admin_managers || []);
   } catch (err) {
     console.error('[Bootstrap] Failed to bootstrap admin account:', (err as Error).message);
     // Non-fatal — server continues running

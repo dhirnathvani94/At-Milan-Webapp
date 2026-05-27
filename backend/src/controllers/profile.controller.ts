@@ -3,7 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
+import { supabaseAdmin } from '../db/database';
+import { emitToUser, emitToAdmin } from '../services/socket.service';
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
@@ -291,7 +293,7 @@ export async function getProfileById(req: Request, res: Response): Promise<void>
         viewed_at: new Date().toISOString(),
       };
       (db.profile_views as ProfileViewRow[]).push(view);
-      saveDB(db);
+      await saveTable('profile_views', db.profile_views as any[]);
     }
 
     // Hide contact details based on auth/premium status
@@ -357,7 +359,14 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
       updated_at: new Date().toISOString(),
     };
 
-    saveDB(db);
+    await saveTable('profiles', db.profiles as any[]);
+
+    // Real-time: broadcast profile update
+    try {
+      emitToUser(id, 'profile:updated', profiles[idx]);
+      emitToUser(id, 'profile:section-updated', { section: 'general', profile: profiles[idx] });
+      emitToAdmin('admin:profile-updated', { user_id: id, profile: profiles[idx] });
+    } catch {}
 
     res.status(200).json({ success: true, profile: profiles[idx] });
   } catch (err) {
@@ -465,7 +474,13 @@ export function updateProfileSection(section: SectionName) {
         updated_at: new Date().toISOString(),
       };
 
-      saveDB(db);
+      await saveTable('profiles', db.profiles as any[]);
+
+      // Real-time: broadcast section update
+      try {
+        emitToUser(id, 'profile:section-updated', { section, profile: profiles[idx] });
+        emitToAdmin('admin:profile-updated', { user_id: id });
+      } catch {}
 
       res.status(200).json({ success: true, section, profile: profiles[idx] });
     } catch (err) {
@@ -498,7 +513,7 @@ export async function completeProfile(req: Request, res: Response): Promise<void
 
     profiles[idx].profile_complete = true;
     profiles[idx].updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('profiles', db.profiles as any[]);
 
     res.status(200).json({ success: true, message: 'Profile marked as complete.', profile: profiles[idx] });
   } catch (err) {
@@ -533,11 +548,40 @@ export async function uploadPhoto(req: Request, res: Response): Promise<void> {
       const userId = req.user!.id;
       const db = await getDB();
 
+      // ── Upload to Supabase Storage (permanent, CDN-backed URL) ──────────────
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const ext = path.extname(req.file.originalname).toLowerCase() || '.jpg';
+      const fileName = `${uuidv4()}${ext}`;
+
+      const { error: storageError } = await supabaseAdmin
+        .storage
+        .from('profile-photos')
+        .upload(`photos/${fileName}`, fileBuffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
+
+      // Remove the multer temp file regardless of outcome
+      try { fs.unlinkSync(req.file.path); } catch {}
+
+      if (storageError) {
+        console.error('[Profile] uploadPhoto storage error:', storageError.message);
+        res.status(500).json({ success: false, error: 'Failed to upload photo to storage.' });
+        return;
+      }
+
+      const { data: urlData } = supabaseAdmin
+        .storage
+        .from('profile-photos')
+        .getPublicUrl(`photos/${fileName}`);
+
+      const photoUrl = urlData.publicUrl;
+
       const photo: PhotoRow = {
         id: uuidv4(),
         user_id: userId,
-        filename: req.file.filename,
-        url: `/uploads/photos/${req.file.filename}`,
+        filename: fileName,
+        url: photoUrl,
         is_profile_photo: false,
         created_at: new Date().toISOString(),
       };
@@ -547,7 +591,10 @@ export async function uploadPhoto(req: Request, res: Response): Promise<void> {
         ...photo,
         type: 'photo',
       });
-      saveDB(db);
+      await saveTable('documents', db.documents as any[]);
+
+      // Real-time: notify user their photo was uploaded
+      try { emitToUser(userId, 'profile:updated', { profile_photo_url: photoUrl }); } catch {}
 
       res.status(201).json({ success: true, photo });
     } catch (saveErr) {
@@ -584,18 +631,47 @@ export async function uploadDocument(req: Request, res: Response): Promise<void>
       const docType = (req.body as { doc_type?: string }).doc_type ?? 'other';
       const db = await getDB();
 
+      // ── Upload to Supabase Storage (permanent) ──────────────────────────────
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const fileName = `${uuidv4()}${ext}`;
+
+      const { error: storageError } = await supabaseAdmin
+        .storage
+        .from('user-documents')
+        .upload(`docs/${fileName}`, fileBuffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
+
+      // Remove the multer temp file regardless of outcome
+      try { fs.unlinkSync(req.file.path); } catch {}
+
+      if (storageError) {
+        console.error('[Profile] uploadDocument storage error:', storageError.message);
+        res.status(500).json({ success: false, error: 'Failed to upload document to storage.' });
+        return;
+      }
+
+      const { data: urlData } = supabaseAdmin
+        .storage
+        .from('user-documents')
+        .getPublicUrl(`docs/${fileName}`);
+
+      const docUrl = urlData.publicUrl;
+
       const doc = {
         id: uuidv4(),
         user_id: userId,
         type: docType,
-        filename: req.file.filename,
-        url: `/uploads/documents/${req.file.filename}`,
+        filename: fileName,
+        url: docUrl,
         status: 'pending',
         created_at: new Date().toISOString(),
       };
 
       (db.documents as unknown[]).push(doc);
-      saveDB(db);
+      await saveTable('documents', db.documents as any[]);
 
       res.status(201).json({ success: true, document: doc });
     } catch (saveErr) {
@@ -636,7 +712,7 @@ export async function deletePhoto(req: Request, res: Response): Promise<void> {
     }
 
     docs.splice(idx, 1);
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
 
     res.status(200).json({ success: true, message: 'Photo deleted.' });
   } catch (err) {
@@ -684,7 +760,8 @@ export async function setProfilePhoto(req: Request, res: Response): Promise<void
       profile.updated_at = new Date().toISOString();
     }
 
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
+    await saveTable('profiles', db.profiles as any[]);
 
     res.status(200).json({ success: true, message: 'Profile photo updated.', photo });
   } catch (err) {
@@ -793,7 +870,18 @@ export async function recordProfileView(req: Request, res: Response): Promise<vo
     };
 
     (db.profile_views as ProfileViewRow[]).push(view);
-    saveDB(db);
+    await saveTable('profile_views', db.profile_views as any[]);
+
+    // Real-time: tell the viewed user someone saw their profile
+    if (viewerId) {
+      try {
+        emitToUser(viewed_id, 'profile:viewed', { viewer_id: viewerId });
+        emitToUser(viewed_id, 'notification:new', {
+          type: 'profile_view',
+          message: 'Someone viewed your profile',
+        });
+      } catch {}
+    }
 
     res.status(201).json({ success: true });
   } catch (err) {

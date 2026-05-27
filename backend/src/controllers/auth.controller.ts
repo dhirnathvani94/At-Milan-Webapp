@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB, supabaseAdmin } from '../db/database';
+import { getDB, saveDB, saveTable, supabaseAdmin } from '../db/database';
 import { generateToken } from '../services/token.service';
 import { generateOTP, verifyOTP as verifyOTPService, clearOTP } from '../services/otp.service';
 import {
@@ -159,7 +159,9 @@ export async function register(req: Request, res: Response): Promise<void> {
     (db.users as UserRow[]).push(newUser);
     (db.profiles as ProfileRow[]).push(newProfile);
     (db.credits as CreditRow[]).push(newCredits);
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
+    await saveTable('profiles', db.profiles as any[]);
+    await saveTable('credits', db.credits as any[]);
 
     // Send verification email — non-blocking
     const baseUrl = env.FRONTEND_URL;
@@ -382,7 +384,7 @@ export async function adminLogin(req: Request, res: Response): Promise<void> {
       };
 
       (db.users as UserRow[]).push(adminUser);
-      saveDB(db);
+      await saveTable('users', db.users as any[]);
       console.log('[Auth] Admin user created from env credentials.');
     }
 
@@ -407,7 +409,7 @@ export async function adminLogin(req: Request, res: Response): Promise<void> {
     // Update last_login
     adminUser.last_login = new Date().toISOString();
     adminUser.updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
 
     const token = generateToken(adminUser.id, adminUser.email, 'admin');
 
@@ -475,7 +477,7 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
     user.email_verify_token = null;
     user.email_verify_token_expiry = null;
     user.updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
 
     // Get first name from profile for welcome email
     const profiles = db.profiles as ProfileRow[];
@@ -531,7 +533,7 @@ export async function resendVerification(req: Request, res: Response): Promise<v
       Date.now() + VERIFY_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000
     ).toISOString();
     user.updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
 
     const profiles = db.profiles as ProfileRow[];
     const profile = profiles.find((p) => p.user_id === user.id);
@@ -574,7 +576,7 @@ export async function sendOTP(req: Request, res: Response): Promise<void> {
     } else {
       otps.push({ phone, otp, expiry });
     }
-    await saveDB(db);
+    await saveTable('otps', db.otps as any[]);
 
     const smsApiUrl = (kv['sms_api_url'] || '').trim();
     const smsApiKey = (kv['sms_api_key'] || '').trim();
@@ -633,7 +635,7 @@ export async function verifyOTP(req: Request, res: Response): Promise<void> {
     if (masterOtp && otp.trim() === masterOtp) {
       console.log(`[OTP] Master OTP used for +91${phone}`);
       db.otps = otps.filter((o: any) => o.phone !== phone);
-      await saveDB(db);
+      await saveTable('otps', db.otps as any[]);
       res.status(200).json({ success: true, message: 'Phone verified successfully!' });
       return;
     }
@@ -646,7 +648,7 @@ export async function verifyOTP(req: Request, res: Response): Promise<void> {
 
     if (new Date(otpRecord.expiry) < new Date()) {
       db.otps = otps.filter((o: any) => o.phone !== phone);
-      await saveDB(db);
+      await saveTable('otps', db.otps as any[]);
       res.status(400).json({ success: false, error: 'OTP expired. Please request a new one.' });
       return;
     }
@@ -657,7 +659,7 @@ export async function verifyOTP(req: Request, res: Response): Promise<void> {
     }
 
     db.otps = otps.filter((o: any) => o.phone !== phone);
-    await saveDB(db);
+    await saveTable('otps', db.otps as any[]);
     res.status(200).json({ success: true, message: 'Phone verified successfully!' });
   } catch (err) {
     console.error('[Auth] verifyOTP error:', err);
@@ -756,7 +758,13 @@ export async function socialLogin(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    saveDB(db);
+    if (isNew) {
+      await saveTable('users', db.users as any[]);
+      await saveTable('profiles', db.profiles as any[]);
+      await saveTable('credits', db.credits as any[]);
+    } else {
+      await saveTable('users', db.users as any[]);
+    }
 
     const token = generateToken(user.id, user.email, user.role);
 
@@ -814,7 +822,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
       Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000
     ).toISOString();
     user.updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
 
     const profiles = db.profiles as ProfileRow[];
     const profile = profiles.find((p) => p.user_id === user.id);
@@ -889,7 +897,7 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     user.login_attempts = 0;
     user.login_locked_until = null;
     user.updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('users', db.users as any[]);
 
     createAuditLog({
       action: 'password_changed',

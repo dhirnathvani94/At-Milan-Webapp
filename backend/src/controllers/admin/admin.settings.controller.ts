@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../../db/database';
+import { getDB, saveDB, saveTable } from '../../db/database';
 import { createAuditLog } from '../../services/audit.service';
 import { emitToAdmin } from '../../services/socket.service';
 import nodemailer from 'nodemailer';
@@ -150,7 +150,7 @@ export async function updateSetting(req: Request, res: Response): Promise<void> 
       settings[idx] = { ...settings[idx]!, value: String(value), updated_at: now };
     }
 
-    saveDB(db);
+    await saveTable('admin_settings_kv', db.admin_settings_kv as any[]);
 
     // Emit real-time settings:updated socket event
     try {
@@ -237,7 +237,7 @@ export async function createPaymentGateway(req: Request, res: Response): Promise
     }
 
     (db.payment_gateways as unknown[]).push(gateway);
-    saveDB(db);
+    await saveTable('payment_gateways', db.payment_gateways as any[]);
 
     createAuditLog({
       action: 'profile_updated',
@@ -283,7 +283,7 @@ export async function updatePaymentGateway(req: Request, res: Response): Promise
     }
 
     gateways[idx] = { ...gateways[idx]!, ...updates, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('payment_gateways', db.payment_gateways as any[]);
 
     createAuditLog({
       action: 'profile_updated',
@@ -317,7 +317,7 @@ export async function deletePaymentGateway(req: Request, res: Response): Promise
     }
 
     const deleted = gateways.splice(idx, 1)[0];
-    saveDB(db);
+    await saveTable('payment_gateways', db.payment_gateways as any[]);
 
     createAuditLog({
       action: 'account_deleted',
@@ -577,7 +577,8 @@ export async function sendAdminNotification(req: Request, res: Response): Promis
       });
     });
 
-    saveDB(db);
+    await saveTable('admin_notifications', db.admin_notifications as any[]);
+    await saveTable('notifications', db.notifications as any[]);
 
     // Emit via socket
     emitToAdmin('admin:notification-sent', { notification, recipient_count: targetUserIds.length });
@@ -662,7 +663,7 @@ export async function markAdminNotificationRead(req: Request, res: Response): Pr
     }
 
     notifications[idx] = { ...notifications[idx]!, is_read: true, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('admin_notifications', db.admin_notifications as any[]);
 
     res.status(200).json({ success: true, notification: notifications[idx] });
   } catch (err) {
@@ -686,7 +687,7 @@ export async function deleteAdminNotification(req: Request, res: Response): Prom
     }
 
     notifications.splice(idx, 1);
-    saveDB(db);
+    await saveTable('admin_notifications', db.admin_notifications as any[]);
 
     res.status(200).json({ success: true, message: 'Notification deleted.' });
   } catch (err) {

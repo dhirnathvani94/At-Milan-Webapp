@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../../db/database';
+import { getDB, saveDB, saveTable } from '../../db/database';
 import { createAuditLog } from '../../services/audit.service';
 import { emitToUser } from '../../services/socket.service';
 
@@ -168,7 +168,7 @@ export async function updateReportStatus(req: Request, res: Response): Promise<v
       reviewed_at: now,
       updated_at: now,
     };
-    saveDB(db);
+    await saveTable('reports', db.reports as any[]);
 
     createAuditLog({
       action: 'report_submitted',
@@ -291,7 +291,7 @@ export async function handleMessageReport(req: Request, res: Response): Promise<
       }
     }
 
-    saveDB(db);
+    await saveTable('messages', db.messages as any[]);
 
     createAuditLog({
       action: 'report_submitted',
@@ -361,7 +361,7 @@ export async function resolveContact(req: Request, res: Response): Promise<void>
       resolved_at: now,
       updated_at: now,
     };
-    saveDB(db);
+    await saveTable('contact_messages', db.contact_messages as any[]);
 
     res.status(200).json({ success: true, contact: contacts[idx] });
   } catch (err) {
@@ -451,7 +451,10 @@ export async function handleUnblockRequest(req: Request, res: Response): Promise
       emitToUser(req_.requester_id, 'user:unblocked', { unblocked_user_id: req_.blocked_user_id });
     }
 
-    saveDB(db);
+    await saveTable('unblock_requests', db.unblock_requests as any[]);
+    if (action === 'approve') {
+      await saveTable('user_blocks', db.user_blocks as any[]);
+    }
 
     createAuditLog({
       action: 'user_unblocked',
@@ -553,7 +556,7 @@ export async function closeTicket(req: Request, res: Response): Promise<void> {
       resolved_at: now,
       updated_at: now,
     };
-    saveDB(db);
+    await saveTable('tickets', db.tickets as any[]);
 
     emitToUser(tickets[idx]!.user_id, 'ticket:closed', { ticket_id: id });
     res.status(200).json({ success: true, ticket: tickets[idx] });
@@ -588,7 +591,7 @@ export async function rejectTicket(req: Request, res: Response): Promise<void> {
       updated_at: now,
       ...(reason ? { rejection_reason: reason } : {}),
     };
-    saveDB(db);
+    await saveTable('tickets', db.tickets as any[]);
 
     emitToUser(tickets[idx]!.user_id, 'ticket:rejected', { ticket_id: id, reason });
     res.status(200).json({ success: true, ticket: tickets[idx] });
@@ -621,7 +624,7 @@ export async function reopenTicket(req: Request, res: Response): Promise<void> {
       resolved_at: undefined,
       updated_at: now,
     };
-    saveDB(db);
+    await saveTable('tickets', db.tickets as any[]);
 
     emitToUser(tickets[idx]!.user_id, 'ticket:reopened', { ticket_id: id });
     res.status(200).json({ success: true, ticket: tickets[idx] });

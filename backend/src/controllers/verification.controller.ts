@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 import { emitToUser, emitToAdmin } from '../services/socket.service';
 import { createNotification } from './notification.controller';
 import { documentUpload } from './profile.controller';
@@ -194,7 +194,10 @@ export async function approveDocument(req: Request, res: Response): Promise<void
       profile.is_verified = true;
     }
 
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
+    if (allApproved) {
+      await saveTable('profiles', db.profiles as any[]);
+    }
 
     // Real-time + notification
     emitToUser(doc.user_id, 'document:approved', { document_id: id, type: doc.type });
@@ -253,7 +256,8 @@ export async function rejectDocument(req: Request, res: Response): Promise<void>
     const profile  = profiles.find((p) => p.user_id === doc.user_id);
     if (profile) profile.is_verified = false;
 
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
+    await saveTable('profiles', db.profiles as any[]);
 
     emitToUser(doc.user_id, 'document:rejected', {
       document_id: id,
@@ -326,7 +330,7 @@ export async function replaceDocument(req: Request, res: Response): Promise<void
       doc.reviewed_by      = null;
       doc.reviewed_at      = null;
 
-      saveDB(db);
+      await saveTable('documents', db.documents as any[]);
 
       res.status(200).json({ success: true, document: doc });
     } catch (saveErr) {
@@ -368,7 +372,7 @@ export async function changeDocStatus(req: Request, res: Response): Promise<void
     if (status === 'rejected' && reason) doc.rejection_reason = reason;
     if (status !== 'rejected') doc.rejection_reason = null;
 
-    saveDB(db);
+    await saveTable('documents', db.documents as any[]);
 
     res.status(200).json({ success: true, document: doc });
   } catch (err) {

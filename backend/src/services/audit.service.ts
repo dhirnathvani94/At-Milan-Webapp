@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -116,7 +116,7 @@ export async function createAuditLog(input: CreateAuditLogInput): Promise<void> 
     };
 
     (db.audit_logs as AuditLogEntry[]).push(entry);
-    await saveDB(db);
+    await saveTable('audit_logs', db.audit_logs as any[]);
   } catch (err) {
     console.error('[Audit] Failed to write audit log:', (err as Error).message);
   }

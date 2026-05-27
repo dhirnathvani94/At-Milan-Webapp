@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB } from '../db/database';
+import { getDB, saveDB, saveTable } from '../db/database';
+import { getIO } from '../services/socket.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,8 @@ export async function createMembershipPlan(req: Request, res: Response): Promise
 
     const db = await getDB();
     (db.membership_plans as MembershipPlanRow[]).push(plan);
-    saveDB(db);
+    await saveTable('membership_plans', db.membership_plans as any[]);
+    try { const io = getIO(); if (io) io.emit('plans:updated', { type: 'membership' }); } catch {}
 
     res.status(201).json({ success: true, plan });
   } catch (err) {
@@ -170,7 +172,8 @@ export async function updateMembershipPlan(req: Request, res: Response): Promise
     }
 
     plans[idx] = { ...plans[idx]!, ...updates, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('membership_plans', db.membership_plans as any[]);
+    try { const io = getIO(); if (io) io.emit('plans:updated', { type: 'membership' }); } catch {}
 
     res.status(200).json({ success: true, plan: plans[idx] });
   } catch (err) {
@@ -196,7 +199,8 @@ export async function deleteMembershipPlan(req: Request, res: Response): Promise
     // Soft delete — set is_active false rather than removing
     plans[idx]!.is_active   = false;
     plans[idx]!.updated_at  = new Date().toISOString();
-    saveDB(db);
+    await saveTable('membership_plans', db.membership_plans as any[]);
+    try { const io = getIO(); if (io) io.emit('plans:updated', { type: 'membership' }); } catch {}
 
     res.status(200).json({ success: true, message: 'Membership plan deactivated.' });
   } catch (err) {
@@ -236,7 +240,8 @@ export async function createCreditPlan(req: Request, res: Response): Promise<voi
 
     const db = await getDB();
     (db.credit_plans as CreditPlanRow[]).push(plan);
-    saveDB(db);
+    await saveTable('credit_plans', db.credit_plans as any[]);
+    try { const io = getIO(); if (io) io.emit('plans:updated', { type: 'credits' }); } catch {}
 
     res.status(201).json({ success: true, plan });
   } catch (err) {
@@ -269,7 +274,8 @@ export async function updateCreditPlan(req: Request, res: Response): Promise<voi
     }
 
     plans[idx] = { ...plans[idx]!, ...updates, updated_at: new Date().toISOString() };
-    saveDB(db);
+    await saveTable('credit_plans', db.credit_plans as any[]);
+    try { const io = getIO(); if (io) io.emit('plans:updated', { type: 'credits' }); } catch {}
 
     res.status(200).json({ success: true, plan: plans[idx] });
   } catch (err) {
@@ -294,7 +300,8 @@ export async function deleteCreditPlan(req: Request, res: Response): Promise<voi
 
     plans[idx]!.is_active  = false;
     plans[idx]!.updated_at = new Date().toISOString();
-    saveDB(db);
+    await saveTable('credit_plans', db.credit_plans as any[]);
+    try { const io = getIO(); if (io) io.emit('plans:updated', { type: 'credits' }); } catch {}
 
     res.status(200).json({ success: true, message: 'Credit plan deactivated.' });
   } catch (err) {

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken, requireAdmin } from '../../middleware/auth';
 import { adminLimiter, uploadLimiter } from '../../middleware/rateLimit';
-import { getDB, saveDB } from '../../db/database';
+import { getDB, saveDB, saveTable } from '../../db/database';
 import {
   getAllUsers,
   getUserById,
@@ -134,7 +134,7 @@ router.post('/users/:userId/reset-password', authenticateToken, requireAdmin, ad
       const bcrypt = await import('bcryptjs');
       user.password_hash = await bcrypt.hash(new_password, 12);
       user.updated_at = new Date().toISOString();
-      await saveDB(db);
+      await saveTable('users', db.users as any[]);
       res.json({ success: true, message: 'Password reset successfully.' });
     } catch { res.status(500).json({ error: 'Failed to reset password.' }); }
   }
@@ -180,8 +180,8 @@ router.post('/change-password', authenticateToken, requireAdmin, adminLimiter, a
     const valid = await bcrypt.compare(current_password, user.password_hash);
     if (!valid) { res.status(401).json({ error: 'Current password is incorrect.' }); return; }
     user.password_hash = await bcrypt.hash(new_password, 12);
-    user.updated_at = new Date().toISOString();
-    await saveDB(db);
+      user.updated_at = new Date().toISOString();
+    await saveTable('users', db.users as any[]);
     res.json({ success: true, message: 'Password changed successfully.' });
   } catch { res.status(500).json({ error: 'Failed to change password.' }); }
 });
@@ -244,7 +244,9 @@ router.post('/managers', authenticateToken, requireAdmin, adminLimiter,
         created_at: now, updated_at: now
       });
       managers.push(newManager);
-      await saveDB(db);
+      await saveTable('admin_managers', managers);
+      await saveTable('users', db.users as any[]);
+      await saveTable('profiles', db.profiles as any[]);
       const { password_hash, ...safe } = newManager;
       res.status(201).json({ success: true, manager: safe });
     } catch (err: any) {
@@ -269,7 +271,7 @@ router.put('/managers/:id', authenticateToken, requireAdmin, adminLimiter,
       if (typeof is_active === 'boolean') managers[idx].is_active = is_active;
       managers[idx].updated_at = new Date().toISOString();
       (db as any).admin_managers = managers;
-      await saveDB(db);
+      await saveTable('admin_managers', managers);
       const { password_hash, ...safe } = managers[idx];
       res.json({ success: true, manager: safe });
     } catch { res.status(500).json({ error: 'Failed to update manager.' }); }
@@ -284,7 +286,7 @@ router.delete('/managers/:id', authenticateToken, requireAdmin, adminLimiter,
       const db = await getDB();
       (db as any).admin_managers = ((db as any).admin_managers || [])
         .filter((m: any) => m.id !== id);
-      await saveDB(db);
+      await saveTable('admin_managers', (db as any).admin_managers);
       res.json({ success: true });
     } catch { res.status(500).json({ error: 'Failed to delete manager.' }); }
   }
@@ -310,7 +312,8 @@ router.post('/managers/:id/change-password', authenticateToken, requireAdmin, ad
       // Also sync to the users table
       const user = (db.users as any[]).find((u: any) => u.id === id);
       if (user) user.password_hash = manager.password_hash;
-      await saveDB(db);
+      await saveTable('admin_managers', managers);
+      await saveTable('users', db.users as any[]);
       res.json({ success: true, message: 'Password changed successfully.' });
     } catch { res.status(500).json({ error: 'Failed to change password.' }); }
   }
