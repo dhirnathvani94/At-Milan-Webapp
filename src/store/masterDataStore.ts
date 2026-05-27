@@ -33,10 +33,20 @@ async function fetchSettingsSafe(): Promise<any[]> {
 }
 
 async function fetchMasterDataSafe(): Promise<Record<string, any>> {
-  const res = await fetch(apiUrl(`/api/master-data?_t=${Date.now()}`), { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to fetch master data');
-  const json = await res.json();
-  return json.data ?? json;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(
+      apiUrl(`/api/master-data?_t=${Date.now()}`),
+      { cache: 'no-store', signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return {};
+    const json = await res.json();
+    return json.data ?? json ?? {};
+  } catch {
+    return {};
+  }
 }
 
 async function fetchCommunitiesSafe(): Promise<any[]> {
@@ -85,8 +95,8 @@ export const useMasterData = create<MasterDataState>((set, get) => ({
         }
       } catch { /* communities not critical — ignore error */ }
     } catch (error: any) {
-      console.error('Failed to load master data:', error);
-      set({ error: error.message, isLoading: false });
+      console.warn('Master data fetch failed — app will work with empty data:', error?.message);
+      set({ error: null, isLoading: false, isLoaded: true });
     }
   },
 
@@ -113,8 +123,8 @@ export const useMasterData = create<MasterDataState>((set, get) => ({
         }
       } catch { /* communities not critical — ignore error */ }
     } catch (error: any) {
-      console.error('Failed to refetch master data:', error);
-      set({ error: error.message, isLoading: false });
+      console.warn('Master data fetch failed — app will work with empty data:', error?.message);
+      set({ error: null, isLoading: false, isLoaded: true });
     }
   },
 
