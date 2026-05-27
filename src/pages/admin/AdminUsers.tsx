@@ -297,7 +297,7 @@ export default function AdminUsers() {
       setUsers(res.users);
       setTotalCount(res.totalCount);
     } catch (error) {
-      toast.error('Failed to fetch users');
+      console.error('Failed to fetch users');
     } finally {
       setLoading(false);
     }

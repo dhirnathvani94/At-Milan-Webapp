@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Globe, Smartphone, BarChart, Save, Code, RefreshCw, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -38,7 +38,7 @@ export default function AdminSEOMarketing() {
       });
       setEditedSettings(initialEdits);
     } catch (error) {
-      toast.error('Failed to fetch SEO settings');
+      console.error('Failed to fetch SEO settings');
     } finally {
       setLoading(false);
     }

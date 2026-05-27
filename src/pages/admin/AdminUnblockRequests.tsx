@@ -59,7 +59,7 @@ export default function AdminUnblockRequests() {
       const detail = await getUnblockRequestDetail(req.id);
       setSelectedRequestDetail(detail);
     } catch (error) {
-      toast.error('Failed to fetch request details');
+      console.error('Failed to fetch request details');
     } finally {
       setLoadingRequestDetail(false);
     }

@@ -164,7 +164,7 @@ export default function InterestsPage() {
       })
     } catch (error) {
       console.error('Error fetching interests:', error)
-      toast.error('Failed to load interests')
+      if (!silent) toast.error('Failed to load interests')
     } finally {
       setLoading(false)
     }

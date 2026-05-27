@@ -27,7 +27,7 @@ export default function AdminCoupons() {
       const data = await res.json();
       setCoupons(data);
     } catch (err) {
-      toast.error('Failed to fetch coupons');
+      console.error('Failed to fetch coupons');
     } finally {
       setLoading(false);
     }

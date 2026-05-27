@@ -170,7 +170,7 @@ export default function AdminUserDetail() {
       const data = await getAdminUserFullDetail(id!);
       setUser(data);
     } catch (error) {
-      toast.error('Failed to fetch user details');
+      console.error('Failed to fetch user details');
       navigate('/admin/users');
     } finally {
       setLoading(false);

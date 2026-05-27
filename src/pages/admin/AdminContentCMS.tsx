@@ -36,7 +36,7 @@ export default function AdminContentCMS() {
       });
       setEditedSettings(initialEdits);
     } catch (error) {
-      toast.error('Failed to fetch settings');
+      console.error('Failed to fetch settings');
     } finally {
       setLoading(false);
     }

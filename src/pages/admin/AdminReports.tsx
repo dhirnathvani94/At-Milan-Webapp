@@ -59,7 +59,7 @@ export default function AdminReports() {
       setReports(data.reports || []);
       setTotalCount(data.totalCount || 0);
     } catch (error) {
-      toast.error('Failed to fetch reports');
+      console.error('Failed to fetch reports');
     } finally {
       setLoading(false);
     }

@@ -151,7 +151,7 @@ export default function AdminSettings() {
         } catch { setFirebaseApis([]); }
       }
     } catch (error) {
-      toast.error('Failed to fetch settings');
+      console.error('Failed to fetch settings');
     } finally {
       setLoading(false);
     }

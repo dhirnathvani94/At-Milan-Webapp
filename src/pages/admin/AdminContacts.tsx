@@ -57,7 +57,7 @@ export default function AdminContacts() {
       const res = await getAdminContacts(1); 
       setContacts(res.contacts || []);
     } catch (error) {
-      if (!silent) toast.error('Failed to fetch contact messages');
+      if (!silent) console.error('Failed to fetch contact messages');
     } finally {
       if (!silent) setLoading(false);
     }
