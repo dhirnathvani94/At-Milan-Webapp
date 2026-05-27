@@ -108,8 +108,25 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: any) {
-    // Just log — never auto-reload (causes infinite loop)
+    // Log the error
     console.error('[ErrorBoundary] Caught error:', error.message, info?.componentStack?.split('\n')?.[1] || '')
+
+    // Auto-recover from ChunkLoadErrors (new deployment) or JSON Parse errors (Render 502 wake-up)
+    const isNetworkOrParseError = 
+      error.name === 'ChunkLoadError' || 
+      error.message.includes('dynamically imported module') || 
+      error.message.includes('fetch') ||
+      (error instanceof SyntaxError && error.message.includes('Unexpected token'));
+
+    if (isNetworkOrParseError) {
+      const reloadCount = parseInt(sessionStorage.getItem('atmilan_error_reload') || '0');
+      if (reloadCount < 2) {
+        sessionStorage.setItem('atmilan_error_reload', String(reloadCount + 1));
+        // Give Render backend a brief moment to wake up, then reload
+        setTimeout(() => window.location.reload(), 1500);
+        return;
+      }
+    }
   }
 
   componentDidUpdate(prevProps: any) {
@@ -191,6 +208,8 @@ function App() {
   const { fetchAllMasterData, isLoaded, admin_settings_kv } = useMasterData()
 
   useEffect(() => {
+    // Clear error reload counter on successful app load
+    sessionStorage.removeItem('atmilan_error_reload')
     initialize()
     fetchAllMasterData()
   }, []) // Empty deps - only run once on mount
