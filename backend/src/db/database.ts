@@ -36,6 +36,9 @@ export interface Database {
   admin_notifications: DbTable;
   purchases: DbTable;
   communities: DbTable;
+  admin_managers: DbTable;
+  match_confirmations: DbTable;
+  reactivation_requests: DbTable;
   master_castes: DbTable;
   master_sub_castes: DbTable;
   master_gotras: DbTable;
@@ -93,6 +96,9 @@ const EMPTY_DB: Database = {
   admin_notifications: [],
   purchases: [],
   communities: [],
+  admin_managers: [],
+  match_confirmations: [],
+  reactivation_requests: [],
   master_castes: [],
   master_sub_castes: [],
   master_gotras: [],
@@ -165,6 +171,9 @@ const TABLE_NAMES: (keyof Database)[] = [
   'admin_notifications',
   'purchases',
   'communities',
+  'admin_managers',
+  'match_confirmations',
+  'reactivation_requests',
   'master_castes',
   'master_sub_castes',
   'master_gotras',
@@ -296,17 +305,16 @@ export async function saveDB(data: Database): Promise<void> {
     const validRows = rows.filter((r: any) => r && (r.id || r.key));
     if (validRows.length === 0) continue;
 
-    const task = supabaseAdmin
-      .from(table as string)
-      .upsert(validRows, { onConflict: 'id' })
-      .then(({ error }) => {
-        if (error) {
-          console.error(`[DB] saveDB error on "${table}":`, error.message);
-        }
-      })
-      .catch((err: Error) => {
+    const task = (async () => {
+      try {
+        const { error } = await supabaseAdmin
+          .from(table as string)
+          .upsert(validRows, { onConflict: 'id' });
+        if (error) console.error(`[DB] saveDB error on "${table}":`, error.message);
+      } catch (err: any) {
         console.error(`[DB] saveDB unexpected on "${table}":`, err.message);
-      });
+      }
+    })();
 
     writeTasks.push(task);
   }
