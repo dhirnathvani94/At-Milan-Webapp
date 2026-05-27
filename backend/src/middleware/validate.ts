@@ -17,9 +17,10 @@ export function validate<T>(schema: ZodSchema<T>): RequestHandler {
 
     if (!result.success) {
       const errors = formatZodErrors(result.error);
+      const firstError = errors[0]?.message || 'Validation failed.';
       res.status(400).json({
         success: false,
-        error: 'Validation failed.',
+        error: firstError,
         fields: errors,
       });
       return;
@@ -56,14 +57,7 @@ function formatZodErrors(error: ZodError): FieldError[] {
  */
 const passwordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters.')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter.')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter.')
-  .regex(/[0-9]/, 'Password must contain at least one number.')
-  .regex(
-    /[^A-Za-z0-9]/,
-    'Password must contain at least one special character.'
-  );
+  .min(4, 'Password must be at least 4 characters.');
 
 // ── Register ──────────────────────────────────────────────────────────────────
 
