@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Shield, ArrowLeft, Tag, CheckCircle, CreditCard, Lock, Check, AlertCircle, Clock, CheckSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { v4 as uuidv4 } from 'uuid';
 import { useAuthStore } from '../store/authStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -34,7 +35,7 @@ export default function CheckoutPage() {
   // reset on navigation). Sent as X-Idempotency-Key so the server can detect
   // duplicate POSTs from double-clicks or network retries — guaranteeing the
   // user is charged at most once per intentional payment action.
-  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  const idempotencyKeyRef = useRef<string>(uuidv4());
 
   useEffect(() => {
     if (!planId || !planType) {
@@ -229,7 +230,7 @@ export default function CheckoutPage() {
       toast.dismiss();
       toast.success('Payment successful! Your account has been upgraded.', { duration: 5000 });
       // Rotate the idempotency key so the next purchase attempt gets a fresh key
-      idempotencyKeyRef.current = crypto.randomUUID();
+      idempotencyKeyRef.current = uuidv4();
       // Refresh both profile and credits so dashboard & credits page show updated balance
       await refreshProfile();
       await refreshCredits();

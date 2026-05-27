@@ -170,6 +170,14 @@ export async function register(req: Request, res: Response): Promise<void> {
     // Generate JWT
     const token = generateToken(userId, email, 'user');
 
+    // Emit to admin panel for real-time sync
+    try {
+      const { emitToAdmin } = await import('../services/socket.service');
+      emitToAdmin('admin:new-user', { user: safeUser(newUser), profile: newProfile });
+    } catch (e) {
+      console.error('Socket emit failed in register:', e);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Account created. Please check your email to verify your account.',

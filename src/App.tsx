@@ -97,7 +97,7 @@ function MembershipLayoutWrapper() {
 }
 
 // Smart Error Boundary: auto-recovers on route navigation, no reload required
-class ErrorBoundary extends Component<
+export class ErrorBoundary extends Component<
   { children: ReactNode; locationPathname?: string },
   { error: Error | null; errorKey: number }
 > {
@@ -175,7 +175,7 @@ class ErrorBoundary extends Component<
 
 // Wraps children in ErrorBoundary and resets it on every route change
 // This prevents stale error state from showing on back-navigation
-function RouteChangeResetBoundary({ children }: { children: ReactNode }) {
+export function RouteChangeResetBoundary({ children }: { children: ReactNode }) {
   const location = useLocation()
   return (
     <ErrorBoundary locationPathname={location.pathname}>
@@ -196,29 +196,33 @@ function App() {
   }, []) // Empty deps - only run once on mount
 
   useEffect(() => {
-    if (isLoaded && admin_settings_kv) {
-      const apiKey = admin_settings_kv.find((s: any) => s.key === 'posthog_api_key')?.value;
-      const host = admin_settings_kv.find((s: any) => s.key === 'posthog_host')?.value || 'https://us.i.posthog.com';
-      
-      if (apiKey && !posthog.__loaded) {
-        posthog.init(apiKey, {
-          api_host: host,
-          autocapture: true,
-          capture_pageview: true,
-          capture_pageleave: true
-        });
-      }
+    try {
+      if (isLoaded && admin_settings_kv) {
+        const apiKey = admin_settings_kv.find((s: any) => s.key === 'posthog_api_key')?.value;
+        const host = admin_settings_kv.find((s: any) => s.key === 'posthog_host')?.value || 'https://us.i.posthog.com';
+        
+        if (apiKey && !posthog.__loaded) {
+          posthog.init(apiKey, {
+            api_host: host,
+            autocapture: true,
+            capture_pageview: true,
+            capture_pageleave: true
+          });
+        }
 
-      // Identify user if logged in
-      if (apiKey && profile) {
-        posthog.identify(profile.id, {
-          email: user?.email || '',
-          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
-          is_premium: profile.is_premium || false,
-        });
-      } else if (apiKey && !profile && posthog.__loaded) {
-        posthog.reset();
+        // Identify user if logged in
+        if (apiKey && profile) {
+          posthog.identify(profile.id, {
+            email: user?.email || '',
+            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+            is_premium: profile.is_premium || false,
+          });
+        } else if (apiKey && !profile && posthog.__loaded) {
+          posthog.reset();
+        }
       }
+    } catch (e) {
+      console.warn('Posthog initialization failed. Tracking disabled.', e);
     }
   }, [isLoaded, admin_settings_kv, profile]);
 

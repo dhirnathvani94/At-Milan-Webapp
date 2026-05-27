@@ -126,6 +126,11 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
       emitToUser(userId,'account:verified',{is_verified:true});
       emitToAdmin('admin:user-verified',{user_id:userId});
     }
+
+    // Emit general profile updates
+    emitToAdmin('admin:profile-updated', { user_id: userId, profile: users[idx] });
+    emitToUser(userId, 'profile:updated', { ...users[idx] });
+
     createAuditLog({action:'profile_updated',actor_id:adminId,resource_type:'user',resource_id:userId,details:{updated_fields:Object.keys(updates)},severity:'info'});
     res.status(200).json({ success:true, user:safeUser(users[idx]!) });
   } catch(err) { console.error('[AdminUsers] updateUser error:',err); res.status(500).json({success:false,error:'Could not update user.'}); }
@@ -145,6 +150,7 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
     await saveTable('users', db.users as any[]);
     createAuditLog({action:'account_deleted',actor_id:adminId,resource_type:'user',resource_id:userId,severity:'critical'});
     emitToUser(userId,'account:deleted',{});
+    emitToAdmin('admin:user-deleted', { user_id: userId });
     res.status(200).json({ success:true, message:'User soft-deleted and anonymised (GDPR).' });
   } catch(err) { console.error('[AdminUsers] deleteUser error:',err); res.status(500).json({success:false,error:'Could not delete user.'}); }
 }
@@ -234,6 +240,10 @@ export async function updateDocumentStatus(req: Request, res: Response): Promise
     const db = await getDB(); const docs = db.documents as DocumentRow[]; const now = new Date().toISOString(); let count = 0;
     docs.forEach(d => { if (d.user_id===userId&&d.type===docType) { d.status=status as DocumentRow['status']; d.reviewed_by=adminId; d.reviewed_at=now; d.updated_at=now; if (status==='rejected'&&reason) d.rejection_reason=reason; else d.rejection_reason=null; count++; } });
     await saveTable('documents', db.documents as any[]);
+    
+    emitToAdmin('admin:doc-status-changed', { user_id: userId, type: docType, status });
+    emitToUser(userId, 'document:status-changed', { userId, status });
+
     res.status(200).json({ success:true, message:`${count} document(s) updated to ${status}.` });
   } catch(err) { res.status(500).json({success:false,error:'Could not update document status.'}); }
 }
