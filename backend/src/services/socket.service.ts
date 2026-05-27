@@ -181,13 +181,10 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
 // ─── getIO ────────────────────────────────────────────────────────────────────
 
 /**
- * Returns the Socket.IO server instance.
- * Throws if initSocket() has not been called yet.
+ * Returns the Socket.IO server instance, or null if not yet initialised.
+ * Safe to call at any time; callers should guard with `if (io)`.
  */
-export function getIO(): SocketIOServer {
-  if (!io) {
-    throw new Error('[Socket] Socket.IO not initialised. Call initSocket() first.');
-  }
+export function getIO(): SocketIOServer | null {
   return io;
 }
 

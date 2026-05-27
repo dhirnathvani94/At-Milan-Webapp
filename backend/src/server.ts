@@ -119,13 +119,8 @@ app.use('/api', apiLimiter);
 // HEALTH CHECKS — no auth, no rate limit
 // ═══════════════════════════════════════════════════════════════════════════════
 
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    status:      'ok',
-    uptime:      Math.floor(process.uptime()),
-    timestamp:   new Date().toISOString(),
-    environment: env.NODE_ENV,
-  });
+app.get('/api/health', (_req, res) => {
+  res.send('ok');
 });
 
 app.get('/api/lb-health', (_req: Request, res: Response) => {

@@ -109,7 +109,7 @@ export async function getSettings(req: Request, res: Response): Promise<void> {
       id: s.id || `set_${idx}`,
       setting_key: s.key,
       setting_value: SECRET_KEYS.has(s.key) ? '' : (s.value ?? ''),
-      setting_type: s.setting_type || 'string',
+      setting_type: s.setting_type || s.type || 'string',
       description: s.description || s.key,
       is_secret: SECRET_KEYS.has(s.key),
     }));
@@ -152,6 +152,18 @@ export async function updateSetting(req: Request, res: Response): Promise<void> 
 
     saveDB(db);
 
+    // Emit real-time settings:updated socket event
+    try {
+      const { getIO } = await import('../../services/socket.service');
+      const io = getIO();
+      if (io) {
+        io.emit('settings:updated', { key, value });
+        if (key === 'site_title') {
+          io.emit('settings:updated', { key: 'platform_name', value });
+        }
+      }
+    } catch { /* non-fatal */ }
+
     createAuditLog({
       action: 'profile_updated',
       actor_id: adminId,
@@ -181,10 +193,10 @@ export async function getPaymentGateways(req: Request, res: Response): Promise<v
     const db = await getDB();
     const gateways = db.payment_gateways as PaymentGatewayRow[];
     // Admin endpoint — return full details including key_secret
-    res.status(200).json({ success: true, gateways });
+    res.status(200).json(gateways);
   } catch (err) {
     console.error('[AdminSettings] getPaymentGateways error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch payment gateways.' });
+    res.status(200).json([]);
   }
 }
 
@@ -599,17 +611,39 @@ export async function getAdminNotifications(req: Request, res: Response): Promis
     const limit = Math.min(100, parseInt(q['limit'] ?? '20', 10));
 
     const db = await getDB();
-    let notifications = (db.admin_notifications as AdminNotificationRow[]).slice();
+    const notifications = (db.admin_notifications as AdminNotificationRow[]).slice();
     notifications.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    const total = notifications.length;
-    const totalPages = Math.ceil(total / limit);
-    const data = notifications.slice((page - 1) * limit, page * limit);
+    const notificationsData = notifications.slice((page - 1) * limit, page * limit);
 
-    res.status(200).json({ success: true, notifications: data, total, page, limit, totalPages });
+    const today = new Date().toDateString();
+    const stats = {
+      total: notifications.length,
+      today: notifications.filter((n: any) =>
+        new Date(n.created_at || n.sent_at).toDateString() === today
+      ).length,
+      totalReach: notifications.reduce((sum: number, n: any) =>
+        sum + (n.delivery_count || 0), 0),
+      avgRead: notifications.length > 0
+        ? Math.round(notifications.reduce((sum: number, n: any) => {
+            const dc = n.delivery_count || 0;
+            const rc = n.read_count || 0;
+            return sum + (dc > 0 ? (rc / dc) * 100 : 0);
+          }, 0) / notifications.length)
+        : 0,
+    };
+
+    const db2 = await getDB();
+    const deviceCount = (db2.fcm_tokens as any[] || []).length;
+
+    res.status(200).json({
+      notifications: notificationsData,
+      stats,
+      device_count: deviceCount,
+    });
   } catch (err) {
     console.error('[AdminSettings] getAdminNotifications error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch notifications.' });
+    res.status(200).json({ notifications: [], stats: { total: 0, today: 0, totalReach: 0, avgRead: 0 }, device_count: 0 });
   }
 }
 

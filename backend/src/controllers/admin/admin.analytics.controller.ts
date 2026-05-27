@@ -93,10 +93,10 @@ export async function getFinancialTransactions(req: Request, res: Response): Pro
       };
     });
 
-    res.status(200).json({ success: true, transactions: data, total, page, limit, totalPages });
+    res.status(200).json({ transactions: data, totalCount: total });
   } catch (err) {
     console.error('[AdminAnalytics] getFinancialTransactions error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch transactions.' });
+    res.status(200).json({ transactions: [], totalCount: 0 });
   }
 }
 
@@ -135,10 +135,10 @@ export async function getFinancialSubscriptions(req: Request, res: Response): Pr
       };
     });
 
-    res.status(200).json({ success: true, subscriptions: data, total, page, limit, totalPages });
+    res.status(200).json({ subscriptions: data, totalCount: total });
   } catch (err) {
     console.error('[AdminAnalytics] getFinancialSubscriptions error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch subscriptions.' });
+    res.status(200).json({ subscriptions: [], totalCount: 0 });
   }
 }
 
@@ -179,10 +179,10 @@ export async function getFinancialInvoices(req: Request, res: Response): Promise
       };
     });
 
-    res.status(200).json({ success: true, invoices: data, total, page, limit, totalPages });
+    res.status(200).json({ invoices: data, totalCount: total });
   } catch (err) {
     console.error('[AdminAnalytics] getFinancialInvoices error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch invoices.' });
+    res.status(200).json({ invoices: [], totalCount: 0 });
   }
 }
 
@@ -235,10 +235,10 @@ export async function getFinancialUserSummaries(req: Request, res: Response): Pr
     const totalPages = Math.ceil(total / limit);
     const data = summaries.slice((page - 1) * limit, page * limit);
 
-    res.status(200).json({ success: true, summaries: data, total, page, limit, totalPages });
+    res.status(200).json({ users: data, totalCount: total });
   } catch (err) {
     console.error('[AdminAnalytics] getFinancialUserSummaries error:', err);
-    res.status(500).json({ success: false, error: 'Could not fetch user summaries.' });
+    res.status(200).json({ users: [], totalCount: 0 });
   }
 }
 
@@ -440,6 +440,13 @@ export async function deleteSuccessStory(req: Request, res: Response): Promise<v
     stories.splice(idx, 1);
     saveDB(db);
 
+    // Emit real-time socket event
+    try {
+      const { getIO } = await import('../../services/socket.service');
+      const io = getIO();
+      if (io) io.emit('success-story:updated', { id, deleted: true });
+    } catch { /* non-fatal */ }
+
     createAuditLog({
       action: 'account_deleted',
       actor_id: adminId,
@@ -480,6 +487,13 @@ export async function approveSuccessStory(req: Request, res: Response): Promise<
     };
     saveDB(db);
 
+    // Emit real-time socket event
+    try {
+      const { getIO } = await import('../../services/socket.service');
+      const io = getIO();
+      if (io) io.emit('success-story:updated', { id, is_approved: true });
+    } catch { /* non-fatal */ }
+
     res.status(200).json({ success: true, story: stories[idx] });
   } catch (err) {
     console.error('[AdminAnalytics] approveSuccessStory error:', err);
@@ -510,6 +524,13 @@ export async function setStoryVisibility(req: Request, res: Response): Promise<v
 
     stories[idx] = { ...stories[idx]!, is_visible: visible, updated_at: new Date().toISOString() };
     saveDB(db);
+
+    // Emit real-time socket event
+    try {
+      const { getIO } = await import('../../services/socket.service');
+      const io = getIO();
+      if (io) io.emit('success-story:updated', { id, is_visible: visible });
+    } catch { /* non-fatal */ }
 
     res.status(200).json({ success: true, story: stories[idx] });
   } catch (err) {

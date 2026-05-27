@@ -200,6 +200,15 @@ export async function approveDocument(req: Request, res: Response): Promise<void
     emitToUser(doc.user_id, 'document:approved', { document_id: id, type: doc.type });
     emitToAdmin('admin:document-approved', { document_id: id, user_id: doc.user_id });
 
+    // If all documents approved → profile fully verified, notify user
+    if (allApproved) {
+      emitToUser(doc.user_id, 'account:approved', {
+        is_verified: true,
+        message: 'Your profile has been approved! You now have full access.',
+      });
+      emitToAdmin('admin:profile-approved', { user_id: doc.user_id });
+    }
+
     createNotification(
       doc.user_id,
       'document_approved',

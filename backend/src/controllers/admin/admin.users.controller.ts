@@ -108,11 +108,22 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     const updates: Record<string,unknown> = {};
     for (const [k,v] of Object.entries(req.body as Record<string,unknown>)) { if (!FORBIDDEN.has(k)) updates[k]=v; }
     const wasActive = users[idx]!.is_active;
+    const wasVerified = (db.profiles as ProfileRow[]).find(p => p.user_id === userId)?.is_verified ?? false;
     users[idx] = { ...users[idx]!, ...updates, updated_at: new Date().toISOString() };
     saveDB(db);
+    // Emit status-changed when active flag changes
     if (updates['is_active']!==undefined && updates['is_active']!==wasActive) {
       emitToUser(userId,'account:status-changed',{is_active:users[idx]!.is_active});
       emitToAdmin('admin:user-status-changed',{user_id:userId,is_active:users[idx]!.is_active});
+      // Blocked specifically
+      if (updates['is_active'] === false) {
+        emitToUser(userId,'account:blocked',{reason:'Admin action'});
+      }
+    }
+    // Emit verified when is_verified changes to true
+    if (updates['is_verified'] === true && !wasVerified) {
+      emitToUser(userId,'account:verified',{is_verified:true});
+      emitToAdmin('admin:user-verified',{user_id:userId});
     }
     createAuditLog({action:'profile_updated',actor_id:adminId,resource_type:'user',resource_id:userId,details:{updated_fields:Object.keys(updates)},severity:'info'});
     res.status(200).json({ success:true, user:safeUser(users[idx]!) });
