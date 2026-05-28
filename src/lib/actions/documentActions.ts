@@ -1,7 +1,7 @@
-import { apiUrl } from '../api'
+import { apiUrl, apiFetch, getAuthHeaders } from '../api'
 
 export async function getVerificationStatus(userId: string) {
-  const response = await fetch(apiUrl(`/api/verification/status/${userId}`));
+  const response = await fetch(apiUrl(`/api/verification/status/${userId}`), { headers: getAuthHeaders() });
   if (!response.ok) throw new Error('Failed to fetch verification status');
   const data = await response.json();
   
@@ -22,15 +22,16 @@ export async function getVerificationStatus(userId: string) {
 }
 
 export async function getPendingVerifications() {
-  const response = await fetch(apiUrl('/api/verification/pending'));
+  const response = await apiFetch(`/api/verification/pending?_t=${Date.now()}`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Failed to fetch pending verifications');
-  return await response.json();
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data.data || data.documents || []);
 }
 
 export async function approveDocument(documentId: string, adminId: string) {
   const response = await fetch(apiUrl(`/api/verification/approve/${documentId}`), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ adminId })
   });
   if (!response.ok) throw new Error('Failed to approve document');
@@ -40,7 +41,7 @@ export async function approveDocument(documentId: string, adminId: string) {
 export async function rejectDocument(documentId: string, adminId: string, reason: string) {
   const response = await fetch(apiUrl(`/api/verification/reject/${documentId}`), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ adminId, reason })
   });
   if (!response.ok) throw new Error('Failed to reject document');

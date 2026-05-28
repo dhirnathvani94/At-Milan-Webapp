@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, CheckCircle2, XCircle, Clock, Search, Filter, Eye, Download, AlertTriangle, ChevronRight, Users, ShieldCheck, ShieldOff, FileCheck, ZoomIn, X, Mail, Phone, Hash, Crown, Upload, RefreshCw, ArrowLeft, FileUp, BadgeCheck, Ban, UserCheck, UserX, CreditCard, FileText, Image, File } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getPendingVerifications, approveDocument, rejectDocument } from '../../lib/actions/documentActions';
+import { getPendingVerifications, approveDocument, rejectDocument } from '../../lib/actions/adminActions';
 import { getVerifiedUsers, getAllVerificationDocs, approveAllDocuments, replaceVerificationDoc, changeDocVerificationStatus } from '../../lib/actions/adminActions';
 import { VerificationDocument, Profile } from '../../lib/types';
 import { useAuthStore } from '../../store/authStore';

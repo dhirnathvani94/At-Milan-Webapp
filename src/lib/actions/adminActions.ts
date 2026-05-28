@@ -239,7 +239,7 @@ export async function getPendingVerifications() {
   const response = await apiFetch(`/api/verification/pending?_t=${Date.now()}`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Failed to fetch pending verifications');
   const data = await response.json();
-  return data.data || data.documents || [];
+  return Array.isArray(data) ? data : (data.data || data.documents || []);
 }
 
 export async function approveDocument(docId: string, adminId: string) {
@@ -645,7 +645,7 @@ export async function getVerifiedUsers(search?: string) {
     const response = await apiFetch(`/api/verification/verified-users?${params.toString()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('Failed to fetch verified users');
     const data = await response.json();
-    return data.data || data.users || [];
+    return Array.isArray(data) ? data : (data.data || data.users || []);
   } catch (error) {
     console.error('Verified users error:', error);
     return [];
@@ -657,12 +657,13 @@ export async function getAllVerificationDocs(status?: string, search?: string) {
     const params = new URLSearchParams();
     if (status && status !== 'all') params.set('status', status);
     if (search) params.set('search', search);
-    const response = await apiFetch(`/api/verification/all?${params.toString()}`);
-    if (!response.ok) throw new Error('Failed to fetch verification documents');
+    params.set('_t', Date.now().toString());
+
+    const response = await apiFetch(`/api/verification/all?${params.toString()}`, { cache: 'no-store' });
+    if (!response.ok) return [];
     const data = await response.json();
-    return data.data || data.documents || [];
-  } catch (error) {
-    console.error('All verification docs error:', error);
+    return Array.isArray(data) ? data : (data.data || data.documents || []);
+  } catch {
     return [];
   }
 }
