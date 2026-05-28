@@ -5,6 +5,14 @@
     "framework": "vite",
     "rewrites": [
         {
+            "source": "/api/:path*",
+            "destination": "https://atmilan-backend.onrender.com/api/:path*"
+        },
+        {
+            "source": "/uploads/:path*",
+            "destination": "https://atmilan-backend.onrender.com/uploads/:path*"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
