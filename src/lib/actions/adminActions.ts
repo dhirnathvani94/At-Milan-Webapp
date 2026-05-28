@@ -311,22 +311,28 @@ export async function getAdminUserFullDetail(userId: string) {
 
   const docData: any = {};
   documents.forEach((doc: any) => {
-    if (doc.document_type === 'aadhaar_front') {
+    const dType = doc.document_type || doc.type;
+    const dUrl = doc.file_url || doc.url;
+    const dStatus = doc.verification_status || doc.status;
+    const dReason = doc.admin_notes || doc.rejection_reason;
+    if (dType === 'aadhaar_front') {
       docData.aadhaar_front_id = doc.id;
-      docData.aadhaar_front_url = doc.file_url;
-      docData.aadhaar_front_verified = doc.verification_status === 'approved';
-      docData.aadhaar_front_rejected = doc.verification_status === 'rejected';
-      docData.aadhaar_front_reason = doc.admin_notes;
-    } else if (doc.document_type === 'aadhaar_back') {
+      docData.aadhaar_front_url = dUrl;
+      docData.aadhaar_front_verified = dStatus === 'approved';
+      docData.aadhaar_front_rejected = dStatus === 'rejected';
+      docData.aadhaar_front_reason = dReason;
+    } else if (dType === 'aadhaar_back') {
       docData.aadhaar_back_id = doc.id;
-      docData.aadhaar_back_url = doc.file_url;
-      docData.aadhaar_back_verified = doc.verification_status === 'approved';
-      docData.aadhaar_back_rejected = doc.verification_status === 'rejected';
-      docData.aadhaar_back_reason = doc.admin_notes;
-    } else if (doc.document_type === 'biodata') {
+      docData.aadhaar_back_url = dUrl;
+      docData.aadhaar_back_verified = dStatus === 'approved';
+      docData.aadhaar_back_rejected = dStatus === 'rejected';
+      docData.aadhaar_back_reason = dReason;
+    } else if (dType === 'biodata') {
       docData.biodata_id = doc.id;
-      docData.biodata_url = doc.file_url;
-      docData.biodata_verified = doc.verification_status === 'approved';
+      docData.biodata_url = dUrl;
+      docData.biodata_verified = dStatus === 'approved';
+      docData.biodata_rejected = dStatus === 'rejected';
+      docData.biodata_reason = dReason;
     }
   });
 
