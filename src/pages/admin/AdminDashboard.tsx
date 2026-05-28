@@ -133,12 +133,11 @@ export default function AdminDashboard() {
         getUnblockRequests('pending'),
         getFinancialAnalytics()
       ]);
+      const docsArray = Array.isArray(docsRes) ? docsRes : (docsRes?.data || docsRes?.documents || []);
       setStats(statsRes);
       setRecentUsers(usersRes.users);
       setPendingDocs(docsArray);
       setFinancialData(finRes);
-
-      const docsArray = Array.isArray(docsRes) ? docsRes : (docsRes?.data || docsRes?.documents || []);
       const groupedDocs = docsArray.reduce((acc: any, doc: any) => {
         if (!acc[doc.user_id]) {
           acc[doc.user_id] = {

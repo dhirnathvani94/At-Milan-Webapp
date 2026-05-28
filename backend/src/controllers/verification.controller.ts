@@ -66,7 +66,7 @@ export async function getPendingVerifications(req: Request, res: Response): Prom
       const userRow = dbUsers.find(
         (u: any) => u.id === d.user_id
       ) ?? null;
-      const fileUrl = d.file_url || d.url || '';
+      const fileUrl = String(d.file_url || d.url || '');
       const mimeType = d.file_type ||
         (fileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image/jpeg' :
          fileUrl.match(/\.pdf$/i) ? 'application/pdf' :
@@ -126,7 +126,7 @@ export async function getAllVerifications(req: Request, res: Response): Promise<
       const userRow = dbUsers2.find(
         (u: any) => u.id === d.user_id
       ) ?? null;
-      const fileUrl = d.file_url || d.url || '';
+      const fileUrl = String(d.file_url || d.url || '');
       const mimeType = d.file_type ||
         (fileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image/jpeg' :
          fileUrl.match(/\.pdf$/i) ? 'application/pdf' :

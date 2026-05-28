@@ -97,8 +97,9 @@ export default function PendingApprovalPage() {
 
     // Socket: document:status-changed — individual doc approved/rejected
     const handleDocStatusChanged = (data: any) => {
-      if (data.userId !== profileIdRef.current) return;
       const pid = profileIdRef.current;
+      const uid = useAuthStore.getState().user?.id;
+      if (data.userId !== uid && data.userId !== pid) return;
       if (pid) fetchDocuments(pid, false);
       if (data.status === 'rejected') {
         toast.error('A document was rejected. Please re-upload.');

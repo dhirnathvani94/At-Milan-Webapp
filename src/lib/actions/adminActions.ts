@@ -292,7 +292,8 @@ export async function getAdminUserFullDetail(userId: string) {
   try {
     const docsResponse = await apiFetch(`/api/documents/${userId}?_t=${Date.now()}`, { cache: 'no-store' });
     if (docsResponse.ok) {
-      documents = await docsResponse.json();
+      const parsed = await docsResponse.json();
+      documents = Array.isArray(parsed) ? parsed : (parsed.documents || parsed.data || []);
     }
   } catch (e) { }
 
