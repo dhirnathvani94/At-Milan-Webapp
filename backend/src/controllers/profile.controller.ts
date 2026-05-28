@@ -694,6 +694,16 @@ export async function uploadDocument(req: Request, res: Response): Promise<void>
       (db.documents as unknown[]).push(doc);
       await saveTable('documents', db.documents as any[]);
 
+      try {
+        const { emitToAdmin } = await import('../services/socket.service');
+        emitToAdmin('admin:doc-uploaded', {
+          userId,
+          docType,
+          documentId: doc.id,
+          status: 'pending',
+        });
+      } catch {}
+
       res.status(201).json({ success: true, document: doc });
     } catch (saveErr) {
       console.error('[Profile] uploadDocument save error:', saveErr);

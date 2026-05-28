@@ -208,6 +208,11 @@ export async function approveDocument(req: Request, res: Response): Promise<void
       type: doc.type,
       isVerified: allApproved,
     });
+    emitToAdmin('admin:doc-status-changed', {
+      userId: doc.user_id,
+      documentId: id,
+      status: 'approved',
+    });
     emitToAdmin('admin:document-approved', { document_id: id, user_id: doc.user_id });
 
     // If all documents approved → profile fully verified, notify user
@@ -217,6 +222,12 @@ export async function approveDocument(req: Request, res: Response): Promise<void
         message: 'Your profile has been approved! You now have full access.',
       });
       emitToAdmin('admin:profile-approved', { user_id: doc.user_id });
+      if (profile) {
+        emitToUser(doc.user_id, 'profile:updated', {
+          ...profile,
+          is_verified: true,
+        });
+      }
     }
     if (allApproved && profile) {
       emitToUser(doc.user_id, 'profile:updated', {
@@ -284,6 +295,11 @@ export async function rejectDocument(req: Request, res: Response): Promise<void>
       type: doc.type,
       isVerified: false,
       rejection_reason: doc.rejection_reason,
+    });
+    emitToAdmin('admin:doc-status-changed', {
+      userId: doc.user_id,
+      documentId: id,
+      status: 'rejected',
     });
     emitToAdmin('admin:document-rejected', { document_id: id, user_id: doc.user_id });
 

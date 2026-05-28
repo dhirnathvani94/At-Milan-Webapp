@@ -115,7 +115,18 @@ export default function MessagesPage() {
     }
 
     socket.on('message:new', handleNewMessage)
-    return () => { socket.off('message:new', handleNewMessage) }
+    
+    // When admin approves unblock request, restore messaging access
+    const handleUnblocked = () => {
+      // Reload the page state — the block check in sendMessage will now pass
+      window.location.reload();
+    };
+    window.addEventListener('user:unblocked', handleUnblocked);
+
+    return () => { 
+      socket.off('message:new', handleNewMessage) 
+      window.removeEventListener('user:unblocked', handleUnblocked);
+    }
   }, [socket, selectedConversation, user?.id])
 
   // Real-time: typing indicator for current conversation

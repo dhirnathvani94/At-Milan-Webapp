@@ -449,6 +449,22 @@ export async function handleUnblockRequest(req: Request, res: Response): Promise
         (b) => !(b.blocker_id === req_.requester_id && b.blocked_id === req_.blocked_user_id)
       );
       emitToUser(req_.requester_id, 'user:unblocked', { unblocked_user_id: req_.blocked_user_id });
+      emitToUser(req_.requester_id, 'notification:new', {
+        type: 'unblock_approved',
+        message: 'Your unblock request has been approved. You can now message again.',
+      });
+    }
+
+    if (action === 'reject') {
+      emitToUser(requests[idx]!.requester_id, 'unblock:rejected', {
+        request_id: id,
+        admin_note: admin_note ?? '',
+        message: 'Your unblock request was rejected.',
+      });
+      emitToUser(requests[idx]!.requester_id, 'notification:new', {
+        type: 'unblock_rejected',
+        message: 'Your unblock request was rejected.',
+      });
     }
 
     await saveTable('unblock_requests', db.unblock_requests as any[]);

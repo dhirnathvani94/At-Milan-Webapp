@@ -244,6 +244,11 @@ export async function approveAllDocuments(req: Request, res: Response): Promise<
         status: 'approved',
         isVerified: true,
       });
+      emitToAdmin('admin:doc-status-changed', {
+        userId,
+        status: 'approved',
+        isVerified: true,
+      });
     } catch {}
     res.status(200).json({ success:true, message:`${count} document(s) approved. Profile verified.`, count });
   } catch(err) { console.error('[AdminUsers] approveAllDocuments error:',err); res.status(500).json({success:false,error:'Could not approve documents.'}); }

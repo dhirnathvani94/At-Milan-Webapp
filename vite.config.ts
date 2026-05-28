@@ -1,8 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import legacy from '@vitejs/plugin-legacy'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    legacy({
+      targets: [
+        'iOS >= 13',
+        'Safari >= 13',
+        'Chrome >= 80',
+        'Firefox >= 75',
+      ],
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+      renderLegacyChunks: true,
+      modernPolyfills: true,
+    }),
+  ],
   resolve: {
     dedupe: ['react', 'react-dom'],
   },
@@ -10,7 +24,7 @@ export default defineConfig({
     include: ['react', 'react-dom'],
   },
   build: {
-    target: 'es2015',
+    target: ['es2015', 'safari13'],
     outDir: 'dist',
     sourcemap: false,
     rollupOptions: {

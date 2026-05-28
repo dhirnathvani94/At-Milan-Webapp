@@ -90,7 +90,7 @@ export default function AdminVerificationPage() {
     const events: [string, () => void][] = [
       ['admin:doc-uploaded',       refreshPending],
       ['admin:doc-status-changed', refreshBoth],
-      ['admin:new-user',           refreshPending],
+      ['admin:user-registered',    refreshPending],
       ['admin:profile-updated',    refreshBoth],
       ['admin:interest-sent',      refreshVerified],
       ['admin:user-reported',      refreshBoth],

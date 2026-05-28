@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from './authStore'
+import { useMasterData } from './masterDataStore'
 
 interface SocketState {
   socket: Socket | null
@@ -264,6 +265,29 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
+    // ── Unblock events ────────────────────────────────────────────────────
+    socket.on('user:unblocked', (_data: any) => {
+      window.dispatchEvent(new CustomEvent('user:unblocked'));
+    });
+
+    socket.on('unblock:rejected', (data: any) => {
+      window.dispatchEvent(
+        new CustomEvent('unblock:rejected', { detail: data })
+      );
+    });
+
+    // ── Reactivation events ───────────────────────────────────────────────
+    socket.on('admin:reactivation-request', (data: any) => {
+      window.dispatchEvent(
+        new CustomEvent('admin:reactivation-request', { detail: data })
+      );
+    });
+
+    // ── Settings change → refresh master data ─────────────────────────────
+    socket.on('settings:updated', (_data: any) => {
+      useMasterData.getState().refetchMasterData();
+    });
+
 
 
     set({ socket })
@@ -285,6 +309,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off('documents:all-approved');
       socket.off('document:approved');
       socket.off('document:rejected');
+      socket.off('user:unblocked');
+      socket.off('unblock:rejected');
+      socket.off('admin:reactivation-request');
+      socket.off('settings:updated');
       socket.disconnect()
       set({ socket: null, onlineUsers: [], typingUsers: {} })
     }

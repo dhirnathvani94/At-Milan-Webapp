@@ -146,33 +146,20 @@ export default function AdminMatchConfirmations() {
   }, [])
 
   useEffect(() => {
-    let registeredSocket: any = null
     const handleNewRequest = async () => { await fetchReactivations(); setActiveTab('reactivations') }
     const handleStoryUpdate = () => fetchMatches()
     const handleReferralUpdate = () => fetchReferrals()
-    const registerListeners = (socket: any) => {
-      if (!socket || socket === registeredSocket) return
-      if (registeredSocket) {
-        registeredSocket.off('admin:reactivation-request', handleNewRequest)
-        registeredSocket.off('success-story:updated', handleStoryUpdate)
-        registeredSocket.off('admin:referral-updated', handleReferralUpdate)
-      }
-      socket.on('admin:reactivation-request', handleNewRequest)
-      socket.on('success-story:updated', handleStoryUpdate)
-      socket.on('admin:referral-updated', handleReferralUpdate)
-      registeredSocket = socket
-    }
-    const currentSocket = useSocketStore.getState().socket
-    if (currentSocket) registerListeners(currentSocket)
-    const unsubSocket = useSocketStore.subscribe(state => { if (state.socket) registerListeners(state.socket) })
+
+    window.addEventListener('admin:reactivation-request', handleNewRequest)
+    window.addEventListener('success-story:updated', handleStoryUpdate)
+    window.addEventListener('admin:referral-updated', handleReferralUpdate)
+
     const poll = setInterval(() => { fetchReactivations(); fetchReferrals() }, 5000)
     return () => {
-      clearInterval(poll); unsubSocket()
-      if (registeredSocket) {
-        registeredSocket.off('admin:reactivation-request', handleNewRequest)
-        registeredSocket.off('success-story:updated', handleStoryUpdate)
-        registeredSocket.off('admin:referral-updated', handleReferralUpdate)
-      }
+      clearInterval(poll)
+      window.removeEventListener('admin:reactivation-request', handleNewRequest)
+      window.removeEventListener('success-story:updated', handleStoryUpdate)
+      window.removeEventListener('admin:referral-updated', handleReferralUpdate)
     }
   }, [])
 
