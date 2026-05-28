@@ -297,7 +297,10 @@ export default function AdminVerificationPage() {
 
   const openVerifiedUserDocs = async (profile: any) => {
     try {
-      const docs = await getAllVerificationDocs('all', profile.profile_id || profile.email);
+      const rawDocs = await getAllVerificationDocs('all', profile.profile_id || profile.email);
+      const docs = Array.isArray(rawDocs)
+        ? rawDocs
+        : (rawDocs?.data || rawDocs?.documents || []);
       if (docs.length > 0) {
         const grouped = docs.reduce((acc: any, d: any) => {
           if (!acc[d.user_id]) acc[d.user_id] = { user_id: d.user_id, profile: d.profile || profile, documents: [], latest_date: d.uploaded_at };

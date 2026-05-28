@@ -58,10 +58,18 @@ export async function getPendingVerifications(req: Request, res: Response): Prom
 
     // Enrich with user info
     const profiles = db.profiles as ProfileRow[];
-    const enriched = data.map((d) => ({
-      ...d,
-      user: profiles.find((p) => p.user_id === d.user_id) ?? null,
-    }));
+    const users2 = db.users as UserRow[];
+    const enriched = data.map((d) => {
+      const prof = profiles.find((p) => p.user_id === d.user_id) ?? null;
+      const usr  = users2.find((u) => u.id === d.user_id) ?? null;
+      return {
+        ...d,
+        uploaded_at: d.created_at,
+        profile: prof,
+        user: prof,
+        email: (usr as any)?.email ?? null,
+      };
+    });
 
     res.status(200).json({ success: true, data: enriched, total, page, limit, totalPages });
   } catch (err) {
