@@ -31,7 +31,7 @@ export async function recordProfileView(viewerId: string, viewedId: string) {
   await fetch(apiUrl('/api/profile-views'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ viewerId, viewedId })
+    body: JSON.stringify({ viewed_id: viewedId, viewer_id: viewerId })
   });
 }
 

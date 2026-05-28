@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB, saveTable, supabaseAdmin } from '../db/database';
+import { saveTable, supabaseAdmin } from '../db/database';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -153,48 +153,39 @@ export interface PaginatedAuditLogs {
  * Returns a paginated, filtered list of audit log entries.
  * Results are sorted newest-first.
  */
-export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<PaginatedAuditLogs> {
-  const db   = await getDB();
-  let logs   = (db.audit_logs as AuditLogEntry[]).slice();
+export async function getAuditLogs(
+  filters: AuditLogFilters = {}
+): Promise<PaginatedAuditLogs> {
+  try {
+    const page  = Math.max(1, filters.page  ?? 1);
+    const limit = Math.min(100, Math.max(1, filters.limit ?? 20));
+    const offset = (page - 1) * limit;
 
-  // ── Apply filters ──────────────────────────────────────────────────────────
-  if (filters.action) {
-    logs = logs.filter((l) => l.action === filters.action);
-  }
-  if (filters.actor_id) {
-    logs = logs.filter((l) => l.actor_id === filters.actor_id);
-  }
-  if (filters.resource_type) {
-    logs = logs.filter((l) => l.resource_type === filters.resource_type);
-  }
-  if (filters.resource_id) {
-    logs = logs.filter((l) => l.resource_id === filters.resource_id);
-  }
-  if (filters.severity) {
-    logs = logs.filter((l) => l.severity === filters.severity);
-  }
-  if (filters.from) {
-    const from = new Date(filters.from).getTime();
-    logs = logs.filter((l) => new Date(l.created_at).getTime() >= from);
-  }
-  if (filters.to) {
-    const to = new Date(filters.to).getTime();
-    logs = logs.filter((l) => new Date(l.created_at).getTime() <= to);
-  }
+    let query = supabaseAdmin
+      .from('audit_logs')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
-  // ── Sort newest first ──────────────────────────────────────────────────────
-  logs.sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+    if (filters.action)        query = query.eq('action', filters.action);
+    if (filters.actor_id)      query = query.eq('actor_id', filters.actor_id);
+    if (filters.resource_type) query = query.eq('resource_type', filters.resource_type);
+    if (filters.resource_id)   query = query.eq('resource_id', filters.resource_id);
+    if (filters.severity)      query = query.eq('severity', filters.severity);
+    if (filters.from)          query = query.gte('created_at', filters.from);
+    if (filters.to)            query = query.lte('created_at', filters.to);
 
-  // ── Paginate ───────────────────────────────────────────────────────────────
-  const total      = logs.length;
-  const page       = Math.max(1, filters.page  ?? 1);
-  const limit      = Math.min(100, Math.max(1, filters.limit ?? 20));
-  const totalPages = Math.ceil(total / limit);
-  const offset     = (page - 1) * limit;
-  const data       = logs.slice(offset, offset + limit);
+    const { data, error, count } = await query;
+    if (error) throw error;
 
-  return { data, total, page, limit, totalPages };
+    const total      = count ?? 0;
+    const totalPages = Math.ceil(total / limit);
+    return {
+      data:       (data ?? []) as AuditLogEntry[],
+      total, page, limit, totalPages,
+    };
+  } catch (err) {
+    console.error('[Audit] getAuditLogs error:', (err as Error).message);
+    return { data: [], total: 0, page: 1, limit: 20, totalPages: 0 };
+  }
 }

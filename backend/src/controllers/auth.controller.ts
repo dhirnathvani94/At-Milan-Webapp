@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { getDB, saveDB, saveTable, supabaseAdmin } from '../db/database';
 import { generateToken } from '../services/token.service';
-import { generateOTP, verifyOTP as verifyOTPService, clearOTP } from '../services/otp.service';
+import { storeOTP, verifyOTP as verifyOTPService } from '../services/otp.service';
 import {
   sendVerificationEmail,
   sendWelcomeEmail,

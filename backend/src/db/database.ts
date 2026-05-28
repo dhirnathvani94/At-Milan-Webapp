@@ -39,6 +39,12 @@ export interface Database {
   admin_managers: DbTable;
   match_confirmations: DbTable;
   reactivation_requests: DbTable;
+  education_career: DbTable;
+  family_details: DbTable;
+  lifestyle: DbTable;
+  horoscope_details: DbTable;
+  partner_preferences: DbTable;
+  profile_photos: DbTable;
   master_castes: DbTable;
   master_sub_castes: DbTable;
   master_gotras: DbTable;
@@ -99,6 +105,12 @@ const EMPTY_DB: Database = {
   admin_managers: [],
   match_confirmations: [],
   reactivation_requests: [],
+  education_career: [],
+  family_details: [],
+  lifestyle: [],
+  horoscope_details: [],
+  partner_preferences: [],
+  profile_photos: [],
   master_castes: [],
   master_sub_castes: [],
   master_gotras: [],
@@ -174,6 +186,12 @@ const TABLE_NAMES: (keyof Database)[] = [
   'admin_managers',
   'match_confirmations',
   'reactivation_requests',
+  'education_career',
+  'family_details',
+  'lifestyle',
+  'horoscope_details',
+  'partner_preferences',
+  'profile_photos',
   'master_castes',
   'master_sub_castes',
   'master_gotras',

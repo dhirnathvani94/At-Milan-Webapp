@@ -201,7 +201,7 @@ export default function SettingsPage() {
     
     setLoading(true);
     try {
-      await updatePassword(passwords.new);
+      await updatePassword((user?.id || ''), passwords.current, passwords.new);
       toast.success('Password updated successfully');
       setShowPasswordForm(false);
       setPasswords({ current: '', new: '', confirm: '' });

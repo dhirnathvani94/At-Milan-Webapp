@@ -187,7 +187,7 @@ export async function deleteNotification(req: Request, res: Response): Promise<v
     const idx = notifs.findIndex(n => n.id === notifId && n.user_id === userId);
     if (idx === -1) { res.status(404).json({ success: false, error: "Notification not found" }); return; }
     notifs.splice(idx, 1);
-    await saveDB(db);
+    await saveTable('notifications', db.notifications as any[]);
     res.json({ success: true, message: "Notification deleted" });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

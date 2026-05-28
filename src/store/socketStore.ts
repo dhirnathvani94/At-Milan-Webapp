@@ -203,7 +203,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     // account:status-changed — when admin blocks / unblocks a user
     socket.on('account:status-changed', (data: any) => {
       if (data?.is_active === false) {
-        useAuthStore.getState().logout();
+        useAuthStore.getState().signOut();
       }
     });
 
@@ -229,42 +229,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
-    socket.on("notification:new", (data: any) => {
-      window.dispatchEvent(new CustomEvent("notification:new", { detail: data }));
-    });
 
-    socket.on("plans:updated", (data: any) => {
-      window.dispatchEvent(new CustomEvent("plans:updated", { detail: data }));
-    });
-
-    socket.on("shortlist:updated", (data: any) => {
-      window.dispatchEvent(new CustomEvent("shortlist:updated", { detail: data }));
-    });
-
-    socket.on("account:verified", (_data: any) => {
-      window.dispatchEvent(new CustomEvent("account:verified"));
-    });
-
-    socket.on("account:status-changed", (data: any) => {
-      window.dispatchEvent(new CustomEvent("account:status-changed", { detail: data }));
-    });
-
-    socket.on("membership:activated", (data: any) => {
-      window.dispatchEvent(new CustomEvent("membership:activated", { detail: data }));
-    });
-
-    socket.on("profile:viewed", (data: any) => {
-      window.dispatchEvent(new CustomEvent("profile:viewed", { detail: data }));
-    });
-
-    socket.on("profile:section-updated", (data: any) => {
-      window.dispatchEvent(new CustomEvent("profile:section-updated", { detail: data }));
-    });
-
-    socket.on("interest:received", (data: any) => {
-      socket.emit("interest:new", data);
-      window.dispatchEvent(new CustomEvent("interest:new", { detail: data }));
-    });
 
     set({ socket })
   },

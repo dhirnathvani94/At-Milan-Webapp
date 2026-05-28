@@ -210,9 +210,9 @@ export default function AdminMatchConfirmations() {
   const usedReferrals = referrals.filter(r => r.status === 'used').length
 
   const tabs = [
-    { key: 'matches', label: 'Match Confirmations', count: matches.length },
+    { key: 'matches', label: 'Match Confirmations', count: matches.length, badge: false },
     { key: 'reactivations', label: 'Reactivation Requests', count: pendingCount, badge: pendingCount > 0 },
-    { key: 'referrals', label: 'Referral Links', count: referrals.length },
+    { key: 'referrals', label: 'Referral Links', count: referrals.length, badge: false },
   ] as const
 
   return (
