@@ -70,7 +70,8 @@ export async function getAdminReports(page: number = 1, statusFilter?: string) {
     });
     const response = await apiFetch(`/api/admin/reports?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch admin reports');
-    return await response.json();
+    const d = await response.json();
+    return { reports: d.reports || d.data || [], totalCount: d.totalCount || d.total || 0 };
   } catch (error) {
     console.error('Admin reports error:', error)
     return { reports: [], totalCount: 0 }
@@ -96,7 +97,8 @@ export async function getAdminSuccessStories(page: number = 1) {
   try {
     const response = await apiFetch(`/api/admin/success-stories?page=${page}&_t=${Date.now()}`);
     if (!response.ok) throw new Error('Failed to fetch admin success stories');
-    return await response.json();
+    const d = await response.json();
+    return { stories: d.stories || d.data || [], totalCount: d.totalCount || d.total || 0 };
   } catch (error) {
     console.error('Admin success stories error:', error)
     return { stories: [], totalCount: 0 }
@@ -182,7 +184,10 @@ export async function getAdminContacts(page: number = 1) {
   try {
     const response = await apiFetch(`/api/admin/tickets?page=${page}`);
     if (!response.ok) throw new Error('Failed to fetch admin contacts');
-    return await response.json();
+    const d = await response.json();
+    const contacts = Array.isArray(d) ? d : (d.contacts || d.data || []);
+    const totalCount = d.totalCount || d.total || (Array.isArray(d) ? d.length : 0);
+    return { contacts, totalCount };
   } catch (error) {
     console.error('Admin contacts error:', error)
     return { contacts: [], totalCount: 0 }
@@ -469,7 +474,8 @@ export async function getMessageReports(page: number = 1, statusFilter?: string)
     });
     const response = await apiFetch(`/api/admin/message-reports?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch message reports');
-    return await response.json();
+    const d = await response.json();
+    return { reports: d.reports || d.data || [], totalCount: d.totalCount || d.total || 0 };
   } catch (error) {
     console.error('Message reports error:', error)
     return { reports: [], totalCount: 0 }
@@ -501,7 +507,8 @@ export async function getUnblockRequests(statusFilter?: string) {
       headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
     });
     if (!response.ok) throw new Error('Failed to fetch unblock requests');
-    return await response.json();
+    const data = await response.json();
+    return data.requests || data.data || [];
   } catch (error) {
     console.error('Unblock requests error:', error)
     return []
@@ -652,7 +659,8 @@ export async function getAllVerificationDocs(status?: string, search?: string) {
     if (search) params.set('search', search);
     const response = await apiFetch(`/api/verification/all?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch verification documents');
-    return await response.json();
+    const data = await response.json();
+    return data.data || data.documents || [];
   } catch (error) {
     console.error('All verification docs error:', error);
     return [];

@@ -91,7 +91,8 @@ export default function AdminUnblockRequests() {
     setHistoryPage(1);
   };
 
-  const filteredRequests = unblockRequests.filter(req => {
+  const safeRequests = Array.isArray(unblockRequests) ? unblockRequests : [];
+  const filteredRequests = safeRequests.filter((req: any) => {
     // Filter by status
     if (statusFilter === 'pending' && req.status !== 'pending') return false;
     if (statusFilter === 'processed' && req.status === 'pending') return false;
@@ -409,7 +410,8 @@ export default function AdminUnblockRequests() {
             </div>
 
             {(() => {
-              const userHistory = unblockRequests.filter(r => r.user_id === (historyUser.id || historyUser.profile_id));
+              const safeRequests = Array.isArray(unblockRequests) ? unblockRequests : [];
+              const userHistory = safeRequests.filter(r => r.user_id === (historyUser.id || historyUser.profile_id));
               if (userHistory.length === 0) {
                 return (
                   <div className="text-center py-8">

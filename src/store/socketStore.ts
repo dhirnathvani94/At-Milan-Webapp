@@ -200,6 +200,41 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
+    socket.on('account:approved', (data: any) => {
+      const authStore = useAuthStore.getState();
+      if (authStore.profile) {
+        authStore.setProfile({
+          ...authStore.profile,
+          is_verified: true,
+        });
+      }
+      // Also dispatch for PendingApprovalPage
+      window.dispatchEvent(
+        new CustomEvent('account:approved', { detail: data })
+      );
+    });
+
+    socket.on('documents:all-approved', (_data: any) => {
+      const authStore = useAuthStore.getState();
+      authStore.refreshProfile();
+    });
+
+    socket.on('document:approved', (data: any) => {
+      window.dispatchEvent(
+        new CustomEvent('document:status-changed', {
+          detail: { ...data, status: 'approved' }
+        })
+      );
+    });
+
+    socket.on('document:rejected', (data: any) => {
+      window.dispatchEvent(
+        new CustomEvent('document:status-changed', {
+          detail: { ...data, status: 'rejected' }
+        })
+      );
+    });
+
     // account:status-changed — when admin blocks / unblocks a user
     socket.on('account:status-changed', (data: any) => {
       if (data?.is_active === false) {
@@ -246,6 +281,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("profile:viewed");
       socket.off("profile:section-updated");
       socket.off("interest:received");
+      socket.off('account:approved');
+      socket.off('documents:all-approved');
+      socket.off('document:approved');
+      socket.off('document:rejected');
       socket.disconnect()
       set({ socket: null, onlineUsers: [], typingUsers: {} })
     }

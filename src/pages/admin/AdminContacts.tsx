@@ -153,7 +153,8 @@ export default function AdminContacts() {
     }
   };
 
-  const filteredContacts = contacts.filter((c: any) => {
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
+  const filteredContacts = safeContacts.filter((c: any) => {
     let match = true;
     
     // Tab filtering
@@ -183,8 +184,8 @@ export default function AdminContacts() {
   const totalPages = Math.ceil(totalCount / limit);
   const paginatedContacts = filteredContacts.slice((page - 1) * limit, page * limit);
 
-  const openCount = contacts.filter(c => c.status !== 'closed' && c.status !== 'rejected').length;
-  const closedCount = contacts.filter(c => c.status === 'closed' || c.status === 'rejected').length;
+  const openCount = safeContacts.filter(c => c.status !== 'closed' && c.status !== 'rejected').length;
+  const closedCount = safeContacts.filter(c => c.status === 'closed' || c.status === 'rejected').length;
 
   return (
     <div className="space-y-6">
@@ -298,7 +299,7 @@ export default function AdminContacts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {loading && contacts.length === 0 ? (
+              {loading && safeContacts.length === 0 ? (
                 <tr><td colSpan={6} className="p-0"><AdminTableSkeleton /></td></tr>
               ) : paginatedContacts.length > 0 ? (
                 paginatedContacts.map((c) => (

@@ -56,8 +56,8 @@ export default function AdminReports() {
       });
       if (!res.ok) throw new Error('Failed to fetch reports');
       const data = await res.json();
-      setReports(data.reports || []);
-      setTotalCount(data.totalCount || 0);
+      setReports(Array.isArray(data) ? data : (data.reports || data.data || []));
+      setTotalCount(data.totalCount || data.total || (Array.isArray(data) ? data.length : 0));
     } catch (error) {
       console.error('Failed to fetch reports');
     } finally {
@@ -115,9 +115,10 @@ export default function AdminReports() {
   };
 
   const handleDownloadExcel = () => {
-    if (!reports || reports.length === 0) return toast.error('No reports available to download');
+    const safeReports = Array.isArray(reports) ? reports : [];
+    if (!safeReports || safeReports.length === 0) return toast.error('No reports available to download');
     const wb = XLSX.utils.book_new();
-    const exportData = reports.map(r => ({
+    const exportData = safeReports.map(r => ({
       'Report ID': r.id,
       'Date': formatDate(r.created_at),
       'Reporter Name': r.reporter ? `${r.reporter.first_name} ${r.reporter.last_name}` : '-',
@@ -134,7 +135,8 @@ export default function AdminReports() {
   };
 
   const handleDownloadPDF = () => {
-    if (!reports || reports.length === 0) return toast.error('No reports available to download');
+    const safeReports = Array.isArray(reports) ? reports : [];
+    if (!safeReports || safeReports.length === 0) return toast.error('No reports available to download');
     
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>System Reports - ${brandName}</title>
@@ -172,7 +174,7 @@ export default function AdminReports() {
       </tr>
     </thead>
     <tbody>
-      ${reports.map(r => `
+      ${safeReports.map(r => `
         <tr>
           <td>${formatDate(r.created_at)}</td>
           <td>${r.reporter ? `${r.reporter.first_name} ${r.reporter.last_name}` : '-'}</td>
@@ -197,7 +199,8 @@ export default function AdminReports() {
   };
 
   const totalPages = Math.ceil(totalCount / limit);
-  const pendingCount = reports.filter(r => r.status === 'pending').length;
+  const safeReports = Array.isArray(reports) ? reports : [];
+  const pendingCount = safeReports.filter(r => r.status === 'pending').length;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -230,7 +233,7 @@ export default function AdminReports() {
           <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center"><AlertTriangle size={20} /></div>
         </Card>
         <Card className="p-4 border-none shadow-sm flex items-center justify-between border-l-4 border-l-green-500">
-          <div><p className="text-xs text-gray-400 font-bold uppercase">Resolved</p><h3 className="text-2xl font-bold">{reports.filter(r => r.status === 'resolved').length}</h3></div>
+          <div><p className="text-xs text-gray-400 font-bold uppercase">Resolved</p><h3 className="text-2xl font-bold">{safeReports.filter(r => r.status === 'resolved').length}</h3></div>
           <div className="w-10 h-10 rounded-full bg-green-50 text-green-500 flex items-center justify-center"><CheckCircle size={20} /></div>
         </Card>
       </div>
@@ -280,8 +283,8 @@ export default function AdminReports() {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr><td colSpan={7} className="p-0"><AdminTableSkeleton /></td></tr>
-              ) : reports.length > 0 ? (
-                reports.map((r) => (
+              ) : safeReports.length > 0 ? (
+                safeReports.map((r: any) => (
                   <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       {r.reporter ? (

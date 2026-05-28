@@ -102,9 +102,18 @@ export class ErrorBoundary extends Component<
   { error: Error | null; errorKey: number }
 > {
   state = { error: null as Error | null, errorKey: 0 }
+  _retryTimer: any = null;
 
   static getDerivedStateFromError(error: Error) {
     return { error }
+  }
+
+  componentDidMount() {
+    this._retryTimer = null;
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this._retryTimer);
   }
 
   componentDidCatch(error: Error, info: any) {
@@ -133,6 +142,14 @@ export class ErrorBoundary extends Component<
         return;
       }
     }
+
+    // For ANY other error: auto-reset the boundary after 3 seconds
+    // so a single bad API response doesn't permanently break the page
+    clearTimeout(this._retryTimer);
+    this._retryTimer = setTimeout(() => {
+      sessionStorage.removeItem('atmilan_error_reload');
+      this.setState({ error: null, errorKey: this.state.errorKey + 1 });
+    }, 3000);
   }
 
   componentDidUpdate(prevProps: any) {

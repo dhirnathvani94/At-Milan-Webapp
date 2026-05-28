@@ -125,6 +125,16 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     if (updates['is_verified'] === true && !wasVerified) {
       emitToUser(userId,'account:verified',{is_verified:true});
       emitToAdmin('admin:user-verified',{user_id:userId});
+      try {
+        const updatedProfile = (db.profiles as any[])
+          .find((p: any) => p.user_id === userId);
+        if (updatedProfile) {
+          emitToUser(userId, 'profile:updated', {
+            ...updatedProfile,
+            is_verified: true,
+          });
+        }
+      } catch {}
     }
 
     // Emit general profile updates
@@ -219,6 +229,22 @@ export async function approveAllDocuments(req: Request, res: Response): Promise<
     await saveTable('profiles', db.profiles as any[]);
     createAuditLog({action:'document_approved',actor_id:adminId,resource_type:'user',resource_id:userId,details:{count},severity:'info'});
     emitToUser(userId,'documents:all-approved',{count});
+    try {
+      const db2 = await getDB();
+      const approvedProfile = (db2.profiles as any[])
+        .find((p: any) => p.user_id === userId);
+      if (approvedProfile) {
+        emitToUser(userId, 'profile:updated', {
+          ...approvedProfile,
+          is_verified: true,
+        });
+      }
+      emitToUser(userId, 'document:status-changed', {
+        userId,
+        status: 'approved',
+        isVerified: true,
+      });
+    } catch {}
     res.status(200).json({ success:true, message:`${count} document(s) approved. Profile verified.`, count });
   } catch(err) { console.error('[AdminUsers] approveAllDocuments error:',err); res.status(500).json({success:false,error:'Could not approve documents.'}); }
 }
