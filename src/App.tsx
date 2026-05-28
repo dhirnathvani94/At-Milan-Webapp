@@ -112,9 +112,9 @@ export class ErrorBoundary extends Component<
     console.error('[ErrorBoundary] Caught error:', error.message, info?.componentStack?.split('\n')?.[1] || '')
 
     // Auto-recover from ChunkLoadErrors (new deployment) or JSON Parse errors (Render 502 wake-up)
+    const isChunkLoad = error.name === 'ChunkLoadError' || error.message.includes('dynamically imported module');
     const isNetworkOrParseError = 
-      error.name === 'ChunkLoadError' || 
-      error.message.includes('dynamically imported module') || 
+      isChunkLoad || 
       error.message.includes('fetch') ||
       (error instanceof SyntaxError && error.message.includes('Unexpected token'));
 
@@ -123,7 +123,13 @@ export class ErrorBoundary extends Component<
       if (reloadCount < 2) {
         sessionStorage.setItem('atmilan_error_reload', String(reloadCount + 1));
         // Give Render backend a brief moment to wake up, then reload
-        setTimeout(() => window.location.reload(), 1500);
+        setTimeout(() => {
+          if (isChunkLoad) {
+             window.location.href = window.location.pathname + '?_t=' + Date.now();
+          } else {
+             window.location.reload();
+          }
+        }, 1500);
         return;
       }
     }
@@ -137,49 +143,59 @@ export class ErrorBoundary extends Component<
   }
 
   handleRecover = () => {
+    sessionStorage.removeItem('atmilan_error_reload')
     this.setState({ error: null, errorKey: this.state.errorKey + 1 })
     window.history.back()
   }
 
   handleRetry = () => {
+    sessionStorage.removeItem('atmilan_error_reload')
     this.setState({ error: null, errorKey: this.state.errorKey + 1 })
   }
 
   render() {
     if (this.state.error) {
+      const isNetwork = this.state.error.message.includes('fetch') || (this.state.error instanceof SyntaxError && this.state.error.message.includes('Unexpected token'));
+      
       return (
         <div style={{
           minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'Inter, sans-serif', padding: 40
         }}>
           <div style={{ textAlign: 'center', maxWidth: 480 }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>⚠️</div>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>{isNetwork ? '📡' : '⚠️'}</div>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a1a', marginBottom: 8 }}>
-              Something went wrong
+              {isNetwork ? 'Connecting to Server...' : 'Something went wrong'}
             </h2>
             <p style={{ color: '#6b7280', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
-              An unexpected error occurred. Please try again.
+              {isNetwork 
+                ? 'The server is currently waking up or experiencing high traffic. Please try again in a few moments.' 
+                : 'An unexpected error occurred. Please try again.'}
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button
-                onClick={this.handleRecover}
-                style={{
-                  padding: '10px 28px', background: '#8B1A1A', color: '#fff',
-                  border: 'none', borderRadius: 8, cursor: 'pointer',
-                  fontWeight: 600, fontSize: 14
-                }}
-              >
-                ← Go Back
-              </button>
+              {!isNetwork && (
+                <button
+                  onClick={this.handleRecover}
+                  style={{
+                    padding: '10px 28px', background: '#8B1A1A', color: '#fff',
+                    border: 'none', borderRadius: 8, cursor: 'pointer',
+                    fontWeight: 600, fontSize: 14
+                  }}
+                >
+                  ← Go Back
+                </button>
+              )}
               <button
                 onClick={this.handleRetry}
                 style={{
-                  padding: '10px 28px', background: '#f3f4f6', color: '#374151',
-                  border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer',
+                  padding: '10px 28px', background: isNetwork ? '#8B1A1A' : '#f3f4f6', 
+                  color: isNetwork ? '#fff' : '#374151',
+                  border: isNetwork ? 'none' : '1px solid #e5e7eb', 
+                  borderRadius: 8, cursor: 'pointer',
                   fontWeight: 600, fontSize: 14
                 }}
               >
-                Try Again
+                {isNetwork ? 'Refresh Connection' : 'Try Again'}
               </button>
             </div>
           </div>

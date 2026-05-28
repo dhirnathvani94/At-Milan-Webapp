@@ -812,7 +812,6 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
     const users = db.users as UserRow[];
     const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
-    // Always return success to prevent email enumeration
     const genericResponse = {
       success: true,
       message: 'If that email is registered, a password reset link has been sent.',
@@ -823,20 +822,22 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Generate reset token — 32 random bytes as hex
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    user.password_reset_token = resetToken;
-    user.password_reset_token_expiry = new Date(
-      Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000
-    ).toISOString();
-    user.updated_at = new Date().toISOString();
-    await saveTable('users', db.users as any[]);
-
     const profiles = db.profiles as ProfileRow[];
     const profile = profiles.find((p) => p.user_id === user.id);
-    const firstName = profile?.first_name ?? 'there';
+    const firstName = profile?.first_name ?? user.email;
 
-    sendPasswordResetEmail(user.email, resetToken, firstName, env.FRONTEND_URL).catch(() => {});
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await supabaseAdmin.from("otps").upsert({
+      id: uuidv4(),
+      phone: email,
+      otp,
+      expiry,
+      user_id: user.id
+    });
+
+    await sendOTPEmail(user.email, otp, firstName);
 
     createAuditLog({
       action: 'password_reset',
@@ -847,10 +848,47 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
       severity: 'warning',
     });
 
-    res.status(200).json(genericResponse);
+    res.status(200).json({ success: true, message: "OTP sent to your email" });
   } catch (err) {
     console.error('[Auth] forgotPassword error:', err);
     res.status(500).json({ success: false, error: 'Could not process request.' });
+  }
+}
+
+// ─── verifyResetOTP ───────────────────────────────────────────────────────────
+
+export async function verifyResetOTP(req: Request, res: Response): Promise<void> {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      res.status(400).json({ success: false, error: 'Email and OTP are required.' });
+      return;
+    }
+
+    const { data: records, error } = await supabaseAdmin
+      .from("otps")
+      .select("*")
+      .eq("phone", email)
+      .eq("otp", otp.trim());
+
+    if (error || !records || records.length === 0) {
+      res.status(400).json({ success: false, error: 'Invalid OTP.' });
+      return;
+    }
+
+    const record = records[0];
+
+    if (new Date(record.expiry) < new Date()) {
+      res.status(400).json({ success: false, error: 'OTP has expired.' });
+      return;
+    }
+
+    await supabaseAdmin.from("otps").delete().eq("id", record.id);
+
+    res.status(200).json({ success: true, userId: record.user_id });
+  } catch (err) {
+    console.error('[Auth] verifyResetOTP error:', err);
+    res.status(500).json({ success: false, error: 'Could not verify OTP.' });
   }
 }
 

@@ -10,6 +10,9 @@ import {
 
 const router = Router();
 
+// GET  /api/messages/unread-count/:userId
+router.get('/unread-count/:userId', authenticateToken, getUnreadCount);
+
 // GET  /api/messages/:userId/:otherUserId
 router.get('/:userId/:otherUserId', authenticateToken, getMessages);
 
@@ -21,8 +24,5 @@ router.post('/:userId/:otherUserId/read', authenticateToken, markAllRead);
 
 // POST /api/messages/:userId/read-all
 router.post('/:userId/read-all', authenticateToken, markAllRead);
-
-// GET  /api/messages/unread-count/:userId
-router.get('/unread-count/:userId', authenticateToken, getUnreadCount);
 
 export default router;

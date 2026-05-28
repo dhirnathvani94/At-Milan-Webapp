@@ -5,6 +5,7 @@ import {
   markAsRead,
   markAllAsRead,
   clearAll,
+  deleteNotification,
 } from '../controllers/notification.controller';
 
 const router = Router();
@@ -17,6 +18,9 @@ router.post('/:id/read', authenticateToken, markAsRead);
 
 // POST   /api/notifications/:userId/read-all
 router.post('/:userId/read-all', authenticateToken, markAllAsRead);
+
+// DELETE /api/notifications/:notifId
+router.delete('/:notifId', authenticateToken, deleteNotification);
 
 // DELETE /api/notifications/:userId/clear-all
 router.delete('/:userId/clear-all', authenticateToken, clearAll);

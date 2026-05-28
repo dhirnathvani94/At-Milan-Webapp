@@ -1,5 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { getDB } from '../db/database';
+import { getDB, supabaseAdmin } from '../db/database';
 
 // ─── Read SMTP settings from DB ───────────────────────────────────────────────
 
@@ -14,32 +14,23 @@ interface SmtpConfig {
 
 async function getSmtpConfig(): Promise<SmtpConfig | null> {
   try {
-    const db = await getDB();
-    const kv = db.admin_settings_kv as Array<{ key: string; value: string }>;
-
-    const get = (key: string): string =>
-      kv.find((r) => r.key === key)?.value ?? '';
-
-    const host      = get('smtp_host');
-    const portStr   = get('smtp_port');
-    const user      = get('smtp_user');
-    const pass      = get('smtp_pass');
-    const fromName  = get('smtp_from_name')  || 'AtMilan';
-    const fromEmail = get('smtp_from_email') || user;
-
+    const { data: kv } = await supabaseAdmin
+      .from("admin_settings_kv")
+      .select("key, value")
+      .in("key", ["smtp_host","smtp_port","smtp_user","smtp_pass","smtp_from_name","smtp_from_email"]);
+    if (!kv || kv.length === 0) return null;
+    const get = (key: string) => kv.find(r => r.key === key)?.value ?? "";
+    const host = get("smtp_host");
+    const portStr = get("smtp_port");
+    const user = get("smtp_user");
+    const pass = get("smtp_pass");
     if (!host || !portStr || !user || !pass) return null;
-
     return {
-      host,
-      port: parseInt(portStr, 10) || 587,
-      user,
-      pass,
-      fromName,
-      fromEmail,
+      host, port: parseInt(portStr,10)||587, user, pass,
+      fromName: get("smtp_from_name")||"AtMilan",
+      fromEmail: get("smtp_from_email")||user,
     };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 // ─── Build transporter on demand ─────────────────────────────────────────────
@@ -97,9 +88,10 @@ export async function sendEmail(
 
 async function getAppName(): Promise<string> {
   try {
-    const db = await getDB();
-    const kv = db.admin_settings_kv as Array<{ key: string; value: string }>;
-    return kv.find((r) => r.key === 'platform_name')?.value || 'AtMilan';
+    const { data } = await supabaseAdmin
+      .from("admin_settings_kv")
+      .select("value").eq("key","platform_name").single();
+    return data?.value || "AtMilan";
   } catch {
     return 'AtMilan';
   }
@@ -107,9 +99,10 @@ async function getAppName(): Promise<string> {
 
 async function getSupportEmail(): Promise<string> {
   try {
-    const db = await getDB();
-    const kv = db.admin_settings_kv as Array<{ key: string; value: string }>;
-    return kv.find((r) => r.key === 'contact_email')?.value || 'support@atmilan.com';
+    const { data } = await supabaseAdmin
+      .from("admin_settings_kv")
+      .select("value").eq("key","contact_email").single();
+    return data?.value || "support@atmilan.com";
   } catch {
     return 'support@atmilan.com';
   }

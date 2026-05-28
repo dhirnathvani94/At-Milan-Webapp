@@ -175,3 +175,21 @@ export async function clearAll(req: Request, res: Response): Promise<void> {
     res.status(500).json({ success: false, error: 'Could not clear notifications.' });
   }
 }
+
+// ─── deleteNotification ───────────────────────────────────────────────────────
+
+export async function deleteNotification(req: Request, res: Response): Promise<void> {
+  try {
+    const { notifId } = req.params;
+    const userId = req.user?.id;
+    const db = await getDB();
+    const notifs = db.notifications as any[];
+    const idx = notifs.findIndex(n => n.id === notifId && n.user_id === userId);
+    if (idx === -1) { res.status(404).json({ success: false, error: "Notification not found" }); return; }
+    notifs.splice(idx, 1);
+    await saveDB(db);
+    res.json({ success: true, message: "Notification deleted" });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}

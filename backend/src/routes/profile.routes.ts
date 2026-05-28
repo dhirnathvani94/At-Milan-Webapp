@@ -15,6 +15,7 @@ import {
   getProfileViews,
   recordProfileView,
   getMyProfile,
+  getProfileComplete,
 } from '../controllers/profile.controller';
 
 const router = Router();
@@ -73,6 +74,9 @@ router.post('/:id/preferences', authenticateToken, updateProfileSection('prefere
 
 // POST /api/profiles/:id/complete
 router.post('/:id/complete', authenticateToken, completeProfile);
+
+// GET /api/profiles/:id/complete — fetch full profile with all sections
+router.get("/:id/complete", optionalAuth, getProfileComplete);
 
 // ─── Full profile update ──────────────────────────────────────────────────────
 

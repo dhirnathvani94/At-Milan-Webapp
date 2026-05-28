@@ -522,6 +522,27 @@ export async function completeProfile(req: Request, res: Response): Promise<void
   }
 }
 
+// ─── getProfileComplete ─────────────────────────────────────────────────────────
+
+export async function getProfileComplete(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const viewerId = req.user?.id ?? (req.headers["x-user-id"] as string) ?? null;
+    const db = await getDB();
+    const profile = (db.profiles as any[]).find(p => p.user_id === id || p.id === id);
+    if (!profile) { res.status(404).json({ success: false, error: "Profile not found" }); return; }
+    const education = (db.education_career as any[] || []).find(e => e.user_id === id);
+    const family = (db.family_details as any[] || []).find(f => f.user_id === id);
+    const lifestyle = (db.lifestyle as any[] || []).find(l => l.user_id === id);
+    const horoscope = (db.horoscope_details as any[] || []).find(h => h.user_id === id);
+    const preferences = (db.partner_preferences as any[] || []).find(p => p.user_id === id);
+    const photos = (db.profile_photos as any[] || []).filter(p => p.user_id === id);
+    res.json({ success: true, profile, education, family, lifestyle, horoscope, preferences, photos });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 // ─── uploadPhoto ──────────────────────────────────────────────────────────────
 
 export async function uploadPhoto(req: Request, res: Response): Promise<void> {

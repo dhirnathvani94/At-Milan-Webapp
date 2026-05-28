@@ -556,7 +556,8 @@ export async function getMembershipPlans() {
   try {
     const response = await apiFetch('/api/plans/membership');
     if (!response.ok) throw new Error('Failed to fetch membership plans');
-    return await response.json();
+    const data = await response.json();
+    return data.plans || data;
   } catch (error) {
     console.error('Membership plans error:', error)
     return []

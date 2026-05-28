@@ -51,23 +51,8 @@ function sanitise(obj: unknown, depth = 0): unknown {
 
 // ─── Log file setup (production only) ────────────────────────────────────────
 
-const LOG_DIR = path.resolve(__dirname, '../../../logs');
-const LOG_FILE = path.join(LOG_DIR, 'app.log');
-
-function ensureLogDir(): void {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
-  }
-}
-
 function writeToFile(line: string): void {
-  try {
-    ensureLogDir();
-    fs.appendFileSync(LOG_FILE, line + '\n', 'utf-8');
-  } catch {
-    // If we can't write to the log file, fall back to console silently
-    console.error('[Logger] Could not write to log file:', LOG_FILE);
-  }
+  console.log(line);
 }
 
 // ─── Format a log entry ───────────────────────────────────────────────────────

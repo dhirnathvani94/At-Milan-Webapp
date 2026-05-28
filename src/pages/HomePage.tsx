@@ -307,7 +307,7 @@ export default function HomePage() {
   useEffect(() => {
     fetch(apiUrl('/api/plans/membership'))
       .then(res => res.json())
-      .then(data => setDynamicPlans(data))
+      .then(data => setDynamicPlans(data.plans || data))
       .catch(() => {});
 
     fetch(apiUrl('/api/search?limit=12'))
@@ -1093,14 +1093,16 @@ export default function HomePage() {
                          animation: mobile-scroll 25s ease-in-out infinite;
                        }
                      `}</style>
-                     <iframe
-                       src="/?screenshot=true"
-                       className="absolute top-0 left-0 origin-top-left pointer-events-none select-none border-0 animate-mobile-scroll bg-gray-50"
-                       style={{ width: '390px', height: '2400px' }}
-                       title="Mobile App Preview"
-                       scrolling="no"
-                       tabIndex={-1}
-                     />
+                     {typeof window !== 'undefined' && window.innerWidth >= 768 && (
+                       <iframe
+                         src="/?screenshot=true"
+                         className="absolute top-0 left-0 origin-top-left pointer-events-none select-none border-0 animate-mobile-scroll bg-gray-50"
+                         style={{ width: '390px', height: '2400px' }}
+                         title="Mobile App Preview"
+                         scrolling="no"
+                         tabIndex={-1}
+                       />
+                     )}
                    </div>
                 </div>
               </div>

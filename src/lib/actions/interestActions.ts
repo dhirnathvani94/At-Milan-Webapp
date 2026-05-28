@@ -5,14 +5,16 @@ import { apiUrl } from '../api'
 export async function getReceivedInterests(userId: string) {
   const response = await fetch(apiUrl(`/api/interests/received/${userId}?t=${Date.now()}`));
   if (!response.ok) throw new Error('Failed to fetch received interests');
-  return await response.json();
+  const data = await response.json();
+  return data.data || data.interests || [];
 }
 
 // Get sent interests
 export async function getSentInterests(userId: string) {
   const response = await fetch(apiUrl(`/api/interests/sent/${userId}?t=${Date.now()}`));
   if (!response.ok) throw new Error('Failed to fetch sent interests');
-  return await response.json();
+  const data = await response.json();
+  return data.data || data.interests || [];
 }
 
 // Get accepted interests (for chat)

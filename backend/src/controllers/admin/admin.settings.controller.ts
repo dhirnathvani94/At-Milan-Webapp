@@ -583,6 +583,18 @@ export async function sendAdminNotification(req: Request, res: Response): Promis
     // Emit via socket
     emitToAdmin('admin:notification-sent', { notification, recipient_count: targetUserIds.length });
 
+    try {
+      const { emitToUser, getIO } = await import("../../services/socket.service");
+      const io = getIO();
+      if (notification.target === "all" && io) {
+        io.emit("notification:new", { notification });
+      } else if (targetUserIds && targetUserIds.length > 0) {
+        targetUserIds.forEach(uid => emitToUser(uid, "notification:new", { notification }));
+      }
+    } catch (e) {
+      console.error('[AdminSettings] Socket emit error:', e);
+    }
+
     createAuditLog({
       action: 'profile_updated',
       actor_id: adminId,

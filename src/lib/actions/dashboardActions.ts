@@ -72,7 +72,7 @@ export async function getShortlistedProfiles(userId: string) {
     const response = await fetch(apiUrl(`/api/shortlists/${userId}?t=${Date.now()}`));
     if (!response.ok) throw new Error('Failed to fetch shortlist');
     const data = await response.json();
-    return data.map((item: any) => item.shortlisted_user).filter(Boolean);
+    return (data.data || []).map((item: any) => item.profile || item).filter(Boolean);
   } catch (error) {
     console.error('Error fetching shortlist:', error)
     return []
@@ -84,11 +84,11 @@ export async function toggleShortlist(userId: string, targetId: string) {
   const response = await fetch(apiUrl('/api/shortlists/toggle'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, targetId })
+    body: JSON.stringify({ target_id: targetId })
   });
   if (!response.ok) throw new Error('Failed to toggle shortlist');
   const data = await response.json();
-  return data.shortlisted;
+  return data.added;
 }
 
 // Check if shortlisted

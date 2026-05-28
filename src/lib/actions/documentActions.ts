@@ -5,10 +5,10 @@ export async function getVerificationStatus(userId: string) {
   if (!response.ok) throw new Error('Failed to fetch verification status');
   const data = await response.json();
   
-  const front = data?.find((d: any) => d.document_type === 'aadhaar_front') || null
-  const back = data?.find((d: any) => d.document_type === 'aadhaar_back') || null
-  const biodata = data?.find((d: any) => d.document_type === 'biodata') || null
-  const isFullyVerified = front?.verification_status === 'approved' && back?.verification_status === 'approved'
+  const front = data?.find((d: any) => (d.document_type || d.type) === 'aadhaar_front') || null
+  const back = data?.find((d: any) => (d.document_type || d.type) === 'aadhaar_back') || null
+  const biodata = data?.find((d: any) => (d.document_type || d.type) === 'biodata') || null
+  const isFullyVerified = (front?.verification_status || front?.status) === 'approved' && (back?.verification_status || back?.status) === 'approved'
   
   return {
     aadhaar_front: front,
@@ -16,8 +16,8 @@ export async function getVerificationStatus(userId: string) {
     biodata: biodata,
     isFullyVerified,
     hasUploaded: !!(front || back),
-    hasPending: data?.some((d: any) => d.verification_status === 'pending') || false,
-    hasRejected: data?.some((d: any) => d.verification_status === 'rejected') || false
+    hasPending: data?.some((d: any) => (d.verification_status || d.status) === 'pending') || false,
+    hasRejected: data?.some((d: any) => (d.verification_status || d.status) === 'rejected') || false
   }
 }
 

@@ -83,7 +83,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc:  ["'self'"],
-        scriptSrc:   ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://checkout.razorpay.com",
+          "https://*.razorpay.com",
+        ],
         styleSrc:    ["'self'", "'unsafe-inline'"],
         imgSrc:      ["'self'", 'data:', 'blob:', 'https://*.supabase.co', 'https://supabase.co'],
         connectSrc:  ["'self'"],
@@ -730,6 +735,23 @@ async function startServer(): Promise<void> {
 
   // Initialise Socket.IO on the HTTP server
   initSocket(httpServer);
+
+  async function resetMonthlyFreeCredits() {
+    try {
+      const { data: s } = await supabaseAdmin.from("admin_settings_kv")
+        .select("value").eq("key","free_monthly_views").single();
+      const limit = parseInt(s?.value||"10", 10);
+      const now = new Date();
+      await supabaseAdmin.from("credits").update({
+        free_views_remaining: limit,
+        free_views_reset_date: new Date(now.getFullYear(),now.getMonth()+1,1).toISOString(),
+        updated_at: now.toISOString()
+      }).lt("free_views_reset_date", now.toISOString());
+      console.log("[CRON] Monthly credits reset to", limit);
+    } catch(e: any) { console.error("[CRON]", e.message); }
+  }
+  setInterval(resetMonthlyFreeCredits, 6*60*60*1000);
+  resetMonthlyFreeCredits();
 
   // Start listening
   httpServer.listen(env.PORT, () => {

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { authLimiter, otpLimiter } from '../middleware/rateLimit';
+import { authLimiter, otpLimiter, checkLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
 import { registerSchema, loginSchema } from '../middleware/validate';
 import { getDB } from '../db/database';
@@ -52,10 +52,10 @@ router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password', resetPassword);
 
 // POST /api/auth/check-duplicate
-router.post('/check-duplicate', authLimiter, checkDuplicate);
+router.post('/check-duplicate', checkLimiter, checkDuplicate);
 
 // POST /api/auth/verify-reset-otp
-router.post('/verify-reset-otp', authLimiter, async (req: Request, res: Response) => {
+router.post('/verify-reset-otp', checkLimiter, async (req: Request, res: Response) => {
   try {
     const { phone, otp } = req.body;
     if (!phone || !otp) {

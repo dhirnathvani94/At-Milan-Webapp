@@ -38,7 +38,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     const token = localStorage.getItem('atmilan-token')
 
-    const socket = io(import.meta.env.VITE_SOCKET_URL || '/', {
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
+      || import.meta.env.VITE_API_URL
+      || "https://atmilan-backend.onrender.com";
+
+    const socket = io(SOCKET_URL, {
       auth: { token },
       query: { token },
       transports: ['polling', 'websocket'],
@@ -225,12 +229,58 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
+    socket.on("notification:new", (data: any) => {
+      window.dispatchEvent(new CustomEvent("notification:new", { detail: data }));
+    });
+
+    socket.on("plans:updated", (data: any) => {
+      window.dispatchEvent(new CustomEvent("plans:updated", { detail: data }));
+    });
+
+    socket.on("shortlist:updated", (data: any) => {
+      window.dispatchEvent(new CustomEvent("shortlist:updated", { detail: data }));
+    });
+
+    socket.on("account:verified", (_data: any) => {
+      window.dispatchEvent(new CustomEvent("account:verified"));
+    });
+
+    socket.on("account:status-changed", (data: any) => {
+      window.dispatchEvent(new CustomEvent("account:status-changed", { detail: data }));
+    });
+
+    socket.on("membership:activated", (data: any) => {
+      window.dispatchEvent(new CustomEvent("membership:activated", { detail: data }));
+    });
+
+    socket.on("profile:viewed", (data: any) => {
+      window.dispatchEvent(new CustomEvent("profile:viewed", { detail: data }));
+    });
+
+    socket.on("profile:section-updated", (data: any) => {
+      window.dispatchEvent(new CustomEvent("profile:section-updated", { detail: data }));
+    });
+
+    socket.on("interest:received", (data: any) => {
+      socket.emit("interest:new", data);
+      window.dispatchEvent(new CustomEvent("interest:new", { detail: data }));
+    });
+
     set({ socket })
   },
 
   disconnect: () => {
     const { socket } = get()
     if (socket) {
+      socket.off("notification:new");
+      socket.off("plans:updated");
+      socket.off("shortlist:updated");
+      socket.off("account:verified");
+      socket.off("account:status-changed");
+      socket.off("membership:activated");
+      socket.off("profile:viewed");
+      socket.off("profile:section-updated");
+      socket.off("interest:received");
       socket.disconnect()
       set({ socket: null, onlineUsers: [], typingUsers: {} })
     }

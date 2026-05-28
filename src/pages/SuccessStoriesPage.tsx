@@ -425,7 +425,7 @@ export default function SuccessStoriesPage() {
       );
       if (res.ok) {
         const data = await res.json();
-        setApprovedStories(data);
+        setApprovedStories(data.stories || data.data || []);
       }
     } catch (err) {
       console.error('Failed to fetch stories:', err);
@@ -469,7 +469,7 @@ export default function SuccessStoriesPage() {
     bride: s.bride_name || s.partner_name || 'Bride',
     story: s.story_text || s.story || '',
     photos: s.photos && s.photos.length > 0
-      ? s.photos.map((p: string) => p.startsWith('/') ? apiUrl(p) : p)
+      ? s.photos.map((p: string) => (p.startsWith('http') ? p : apiUrl(p)))
       : [s.photo_url || s.photo].filter(Boolean)
   }));
 

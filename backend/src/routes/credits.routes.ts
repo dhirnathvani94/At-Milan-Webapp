@@ -8,13 +8,13 @@ import {
 
 const router = Router();
 
-// GET  /api/credits/:userId
-router.get('/:userId', authenticateToken, getCredits);
+// GET  /api/credits/reveal-contact/check
+router.get('/reveal-contact/check', authenticateToken, checkRevealContact);
 
 // POST /api/credits/reveal-contact
 router.post('/reveal-contact', authenticateToken, revealContact);
 
-// GET  /api/credits/reveal-contact/check
-router.get('/reveal-contact/check', authenticateToken, checkRevealContact);
+// GET  /api/credits/:userId
+router.get('/:userId', authenticateToken, getCredits);
 
 export default router;

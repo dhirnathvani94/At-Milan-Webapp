@@ -48,15 +48,8 @@ export const corsOptions: CorsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Cache-Control',
-    'cache-control',
-    'Pragma',
-    'X-Cache-Control',
-    'Accept',
-    'Origin',
+    "Content-Type","Authorization","X-Requested-With",
+    "Cache-Control","Pragma","x-user-id","x-device-id"
   ],
   exposedHeaders: ['X-Total-Count'],
   maxAge: 86400,

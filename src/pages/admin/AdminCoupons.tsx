@@ -25,7 +25,7 @@ export default function AdminCoupons() {
     try {
       const res = await fetch(apiUrl('/api/admin/coupons'));
       const data = await res.json();
-      setCoupons(data);
+      setCoupons(data.coupons || []);
     } catch (err) {
       console.error('Failed to fetch coupons');
     } finally {

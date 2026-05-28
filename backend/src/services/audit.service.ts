@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDB, saveDB, saveTable } from '../db/database';
+import { getDB, saveDB, saveTable, supabaseAdmin } from '../db/database';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,8 +100,6 @@ const SEVERITY_MAP: Partial<Record<AuditAction, AuditSeverity>> = {
  */
 export async function createAuditLog(input: CreateAuditLogInput): Promise<void> {
   try {
-    const db = await getDB();
-
     const entry: AuditLogEntry = {
       id:               uuidv4(),
       action:           input.action,
@@ -115,8 +113,13 @@ export async function createAuditLog(input: CreateAuditLogInput): Promise<void> 
       created_at:       new Date().toISOString(),
     };
 
-    (db.audit_logs as AuditLogEntry[]).push(entry);
-    await saveTable('audit_logs', db.audit_logs as any[]);
+    const { error } = await supabaseAdmin
+      .from('audit_logs')
+      .insert(entry);
+      
+    if (error) {
+      console.error('[Audit] Failed to log:', error.message);
+    }
   } catch (err) {
     console.error('[Audit] Failed to write audit log:', (err as Error).message);
   }

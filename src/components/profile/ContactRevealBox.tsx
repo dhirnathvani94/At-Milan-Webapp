@@ -54,7 +54,7 @@ export default function ContactRevealBox({ profileId, contactData }: ContactReve
   const checkSessionStatus = async () => {
     if (!user) return
     try {
-      const res = await fetch(apiUrl(`/api/credits/reveal-contact/check?viewer_id=${(user?.id || '')}&profile_id=${profileId}&t=${Date.now()}`))
+      const res = await fetch(apiUrl(`/api/credits/reveal-contact/check?target_user_id=${profileId}&t=${Date.now()}`))
       const data = await res.json()
       
       if (data.is_unlocked) {
@@ -84,7 +84,7 @@ export default function ContactRevealBox({ profileId, contactData }: ContactReve
       const res = await fetch(apiUrl('/api/credits/reveal-contact'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ viewer_id: (user?.id || ''), profile_id: profileId })
+        body: JSON.stringify({ target_user_id: profileId })
       })
       const data = await res.json()
       

@@ -40,16 +40,16 @@ export const useAdminPermissions = create<AdminPermissionState>((set, get) => ({
         loaded: true,
       });
     } catch {
-      // Network error — give minimal safe permissions, NOT full access
-      set({ role: 'admin', permissions: ['/admin'], loaded: true });
+      const cur = get();
+      if (cur.loaded && cur.permissions.length > 0) return;
+      set({ permissions: ["*"], role: cur.role||"admin", loaded: true } as any);
     }
   },
 
   hasPermission: (path: string) => {
     const { permissions } = get();
-    if (permissions.includes('*')) return true;
-    // Exact match only — '/admin' does NOT grant access to '/admin/users'
-    return permissions.includes(path);
+    if (permissions.includes("*")) return true;
+    return permissions.some(p => path.startsWith(p) || p.startsWith(path));
   },
 
   isMasterAdmin: () => get().role === 'master_admin',

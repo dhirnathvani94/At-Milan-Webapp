@@ -1,4 +1,4 @@
-import { apiUrl } from '../api'
+import { apiUrl, getAuthHeaders } from '../api'
 
 export async function registerUser(data: {
   email: string
@@ -110,9 +110,15 @@ export async function getUserDocuments(userId: string) {
   }
 }
 
-export async function updatePassword(newPassword: string) {
-  // Local placeholder
-  console.log('Update password locally:', newPassword)
+export async function updatePassword(userId: string, currentPassword: string, newPassword: string) {
+  const response = await fetch(apiUrl(`/api/auth/change-password`), {
+    method: "POST",
+    headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, currentPassword, newPassword }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to update password");
+  return data;
 }
 
 export async function resetPassword(email: string) {
@@ -173,21 +179,23 @@ export async function updateProfileField(userId: string, updates: Record<string,
 }
 
 export async function deactivateAccount(userId: string) {
-  const response = await fetch(apiUrl(`/api/profiles/${userId}/personal`), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_active: false })
-  })
-  if (!response.ok) throw new Error('Failed to deactivate account')
-  localStorage.removeItem('atmilan-token')
+  const response = await fetch(apiUrl(`/api/auth/deactivate`), {
+    method: "POST",
+    headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to deactivate account");
+  return data;
 }
 
-export async function deleteAccount(userId: string) {
-  // Local implementation: just deactivate for now
-  const response = await fetch(apiUrl(`/api/profiles/${userId}/personal`), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_active: false })
-  })
-  localStorage.removeItem('atmilan-token')
+export async function deleteAccount(userId: string, reason?: string) {
+  const response = await fetch(apiUrl(`/api/gdpr/delete`), {
+    method: "DELETE",
+    headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, reason: reason || "User requested deletion" }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Failed to delete account");
+  return data;
 }

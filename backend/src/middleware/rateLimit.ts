@@ -23,9 +23,17 @@ const jsonHandler: Partial<Options> = {
 export const authLimiter: RateLimitRequestHandler = rateLimit({
   ...jsonHandler,
   windowMs: 15 * 60 * 1000,   // 15 minutes
-  max: 5,
+  max: 20,
   message: 'Too many attempts. Try again in 15 minutes.',
   skipSuccessfulRequests: false,
+});
+
+export const checkLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, error: "Too many requests. Try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // ─── OTP limiter ──────────────────────────────────────────────────────────────

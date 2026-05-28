@@ -41,7 +41,7 @@ export default function MatchesPage() {
     try {
       setLoading(true)
       const data = await getRecommendations((user?.id || ''), 50)
-      setMatches(data)
+      setMatches(Array.isArray(data) ? data : (data.profiles || []))
     } catch (error) {
       console.error('Error fetching matches:', error)
     } finally {

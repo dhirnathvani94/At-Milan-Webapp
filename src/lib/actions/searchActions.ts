@@ -41,7 +41,8 @@ export async function getRecommendations(currentUserId: string, limit: number = 
   try {
     const response = await fetch(apiUrl(`/api/recommendations?userId=${currentUserId}&limit=${limit}`));
     if (!response.ok) throw new Error('Failed to fetch recommendations');
-    return await response.json();
+    const data = await response.json();
+    return data.profiles || data.data || [];
   } catch (error) {
     console.error('Error getting recommendations:', error);
     return [];

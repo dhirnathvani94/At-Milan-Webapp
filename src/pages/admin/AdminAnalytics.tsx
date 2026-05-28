@@ -81,8 +81,8 @@ export default function AdminAnalytics() {
       { Metric: 'Verified Users', Value: stats.verifiedUsers },
       { Metric: 'Pending Docs', Value: stats.pendingDocs },
       { Metric: 'Total Revenue', Value: formatCurrency(analytics.totalRevenue) },
-      { Metric: 'Credit Revenue', Value: formatCurrency(analytics.creditRevenue) },
-      { Metric: 'Membership Revenue', Value: formatCurrency(analytics.membershipRevenue) }
+      { Metric: 'Credit Revenue', Value: formatCurrency(analytics.revenueByType?.credits || analytics.creditRevenue || 0) },
+      { Metric: 'Membership Revenue', Value: formatCurrency(analytics.revenueByType?.membership || analytics.membershipRevenue || 0) }
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(overview), 'Overview');
     
@@ -140,8 +140,8 @@ export default function AdminAnalytics() {
     <h2>Financial Performance</h2>
     <div class="grid">
       <div class="card"><div class="card-label">Total Revenue</div><div class="card-value">${formatCurrency(analytics.totalRevenue)}</div></div>
-      <div class="card"><div class="card-label">Credit Sales</div><div class="card-value">${formatCurrency(analytics.creditRevenue)}</div></div>
-      <div class="card"><div class="card-label">Membership Sales</div><div class="card-value">${formatCurrency(analytics.membershipRevenue)}</div></div>
+      <div class="card"><div class="card-label">Credit Sales</div><div class="card-value">${formatCurrency(analytics.revenueByType?.credits || analytics.creditRevenue || 0)}</div></div>
+      <div class="card"><div class="card-label">Membership Sales</div><div class="card-value">${formatCurrency(analytics.revenueByType?.membership || analytics.membershipRevenue || 0)}</div></div>
       <div class="card"><div class="card-label">Total Transactions</div><div class="card-value">${analytics.totalTransactions || 0}</div></div>
     </div>
   </div>
@@ -302,12 +302,12 @@ export default function AdminAnalytics() {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
                   <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Credits Revenue</p>
-                  <h4 className="text-xl font-bold text-gray-900">{formatCurrency(analytics.creditRevenue)}</h4>
+                  <h4 className="text-xl font-bold text-gray-900">{formatCurrency(analytics.revenueByType?.credits || analytics.creditRevenue || 0)}</h4>
                   <p className="text-xs text-gray-500 mt-1">{analytics.creditPurchasesCount || 0} Packages Sold</p>
                 </div>
                 <div className="bg-amber-50/50 rounded-xl p-4 border border-amber-100">
                   <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Membership Revenue</p>
-                  <h4 className="text-xl font-bold text-gray-900">{formatCurrency(analytics.membershipRevenue)}</h4>
+                  <h4 className="text-xl font-bold text-gray-900">{formatCurrency(analytics.revenueByType?.membership || analytics.membershipRevenue || 0)}</h4>
                   <p className="text-xs text-gray-500 mt-1">{analytics.membershipPurchasesCount || 0} Plans Sold</p>
                 </div>
               </div>

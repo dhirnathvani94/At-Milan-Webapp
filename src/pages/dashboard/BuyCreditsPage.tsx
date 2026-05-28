@@ -72,8 +72,10 @@ export default function BuyCreditsPage() {
         fetch(apiUrl(`/api/plans/credits?t=${t}`)),
         fetch(apiUrl(`/api/plans/membership?t=${t}`))
       ])
-      setCreditPlans(await creditsRes.json())
-      setMembershipPlans(await membershipRes.json())
+      const creditsData = await creditsRes.json()
+      const membershipData = await membershipRes.json()
+      setCreditPlans(creditsData.plans || creditsData)
+      setMembershipPlans(membershipData.plans || membershipData)
     } catch (err) {
       console.error('Failed to fetch plans:', err)
     } finally {

@@ -72,7 +72,10 @@ export default function AdminPaymentGateways() {
       const res = await fetch(apiUrl('/api/admin/payment-gateways'), {
         headers: { 'Authorization': `Bearer ${token()}` }
       });
-      if (res.ok) setGateways(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setGateways(data.gateways || []);
+      }
     } catch { toast.error('Failed to load gateways'); }
     finally { setLoading(false); }
   };

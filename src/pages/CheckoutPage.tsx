@@ -48,7 +48,8 @@ export default function CheckoutPage() {
       try {
         const endpoint = planType === 'credit' ? '/api/plans/credits' : '/api/plans/membership';
         const res = await fetch(apiUrl(endpoint));
-        const plans = await res.json();
+        const data = await res.json();
+        const plans = data.plans || data;
         const selectedPlan = plans.find((p: any) => p.id === planId || p.name.toLowerCase() === planId.toLowerCase());
         if (!selectedPlan) {
           toast.error('Plan not found');

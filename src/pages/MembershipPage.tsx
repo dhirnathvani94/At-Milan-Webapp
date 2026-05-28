@@ -35,12 +35,12 @@ export default function MembershipPage() {
     const t = Date.now();
     fetch(apiUrl(`/api/plans/membership?t=${t}`))
       .then(res => res.json())
-      .then(data => setDynamicPlans(data))
+      .then(data => setDynamicPlans(data.plans || data))
       .catch(() => {});
       
     fetch(apiUrl(`/api/plans/credits?t=${t}`))
       .then(res => res.json())
-      .then(data => setCreditPlans(data))
+      .then(data => setCreditPlans(data.plans || data))
       .catch(() => {});
   };
 
