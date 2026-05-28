@@ -54,9 +54,13 @@ export default function ProfileCard({ profile, currentUserId, onInterestSent }: 
     };
     socket.on('interest:updated', handleUpdate);
     socket.on('interest:new', handleUpdate);
+    socket.on('profile:updated', handleUpdate);
+    socket.on('section-updated', handleUpdate);
     return () => {
       socket.off('interest:updated', handleUpdate);
       socket.off('interest:new', handleUpdate);
+      socket.off('profile:updated', handleUpdate);
+      socket.off('section-updated', handleUpdate);
     };
   }, [socket, currentUserId, profile?.id]);
 

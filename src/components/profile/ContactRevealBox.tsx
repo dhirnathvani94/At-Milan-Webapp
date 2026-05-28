@@ -17,7 +17,7 @@ interface ContactRevealBoxProps {
 }
 
 export default function ContactRevealBox({ profileId, contactData }: ContactRevealBoxProps) {
-  const { user } = useAuthStore()
+  const { user, refreshCredits } = useAuthStore()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [revealState, setRevealState] = useState<'checking' | 'locked' | 'unlocked' | 'expired'>('checking')
@@ -112,8 +112,7 @@ export default function ContactRevealBox({ profileId, contactData }: ContactReve
             free_monthly_limit: data.credits.free_monthly_limit,
           } as any)
         }
-        // Refresh credits after a delay so component state is stable
-        setTimeout(() => { useAuthStore.getState().refreshCredits() }, 2000)
+        refreshCredits()
       } else {
         toast.error(data.error || "Failed to unlock contact")
       }

@@ -202,6 +202,11 @@ export async function revealContact(req: Request, res: Response): Promise<void> 
     await saveTable('credits', db.credits as any[]);
     await saveTable('credits_history', db.credits_history as any[]);
 
+    try {
+      const { emitToUser } = await import('../services/socket.service');
+      emitToUser(viewerId, 'credits:updated', { balance: viewerCredits.balance });
+    } catch {}
+
     res.status(200).json({
       success: true,
       alreadyRevealed: false,

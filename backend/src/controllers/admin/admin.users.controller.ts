@@ -180,7 +180,9 @@ export async function adjustCredits(req: Request, res: Response): Promise<void> 
     await saveTable('credits', db.credits as any[]);
     await saveTable('credits_history', db.credits_history as any[]);
     createAuditLog({action:'credits_adjusted',actor_id:adminId,resource_type:'user',resource_id:userId,details:{type,amount,reason,new_balance:row.balance},severity:'warning'});
-    emitToUser(userId,'credits:updated',{balance:row.balance,type,amount,reason});
+    try {
+      emitToUser(userId,'credits:updated',{balance:row.balance,type,amount,reason});
+    } catch {}
     res.status(200).json({ success:true, newBalance:row.balance, adjustment:{type,amount,reason} });
   } catch(err) { console.error('[AdminUsers] adjustCredits error:',err); res.status(500).json({success:false,error:'Could not adjust credits.'}); }
 }

@@ -10,6 +10,7 @@ import Modal from '../../components/ui/Modal';
 import Select from '../../components/ui/Select';
 import { formatDate } from '../../lib/utils';
 import { AdminTableSkeleton } from '../../components/ui/Skeletons';
+import { useSocketStore } from '../../store/socketStore';
 
 const TABS = [
   { key: 'open', label: 'Open Tickets' },
@@ -31,6 +32,7 @@ export default function AdminContacts() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState('open');
+  const { socket } = useSocketStore();
   const intervalRef = useRef<any>(null);
   
   // Filters
@@ -68,6 +70,17 @@ export default function AdminContacts() {
     intervalRef.current = setInterval(() => fetchContacts(true), 15000);
     return () => clearInterval(intervalRef.current);
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => fetchContacts(true);
+    socket.on('admin:contact-message', refresh);
+    socket.on('admin:ticket-created', refresh);
+    return () => {
+      socket.off('admin:contact-message', refresh);
+      socket.off('admin:ticket-created', refresh);
+    };
+  }, [socket]);
 
   // Reset page to 1 when filters/tabs change
   useEffect(() => {

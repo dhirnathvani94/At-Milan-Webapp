@@ -14,7 +14,7 @@ import Badge from '../../components/ui/Badge';
 import { formatDate } from '../../lib/utils';
 import { AdminTableSkeleton } from '../../components/ui/Skeletons';
 import { useMasterData } from '../../store/masterDataStore';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, getAuthHeaders } from '../../lib/api';
 
 // ── Date preset helpers ─────────────────────────────────────────────────────
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
@@ -85,7 +85,7 @@ export default function AdminFinancials() {
       const params = new URLSearchParams();
       if (analyticsFromDate) params.set('from_date', analyticsFromDate);
       if (analyticsToDate) params.set('to_date', analyticsToDate);
-      const res = await fetch(apiUrl(`/api/admin/financial/analytics?${params.toString()}`));
+      const res = await fetch(apiUrl(`/api/admin/financial/analytics?${params.toString()}`), { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed');
       setAnalytics(await res.json());
     } catch (e) {
@@ -100,7 +100,7 @@ export default function AdminFinancials() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (subStatusFilter) params.set('status', subStatusFilter);
-      const res = await fetch(apiUrl(`/api/admin/financial/subscriptions?${params.toString()}`));
+      const res = await fetch(apiUrl(`/api/admin/financial/subscriptions?${params.toString()}`), { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setSubscriptions(data.subscriptions);
@@ -120,7 +120,7 @@ export default function AdminFinancials() {
       if (txnStatusFilter) params.set('status', txnStatusFilter);
       if (txnFromDate) params.set('from_date', txnFromDate);
       if (txnToDate) params.set('to_date', txnToDate);
-      const res = await fetch(apiUrl(`/api/admin/financial/transactions?${params.toString()}`));
+      const res = await fetch(apiUrl(`/api/admin/financial/transactions?${params.toString()}`), { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setTransactions(data.transactions);
@@ -138,7 +138,7 @@ export default function AdminFinancials() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (invFromDate) params.set('from_date', invFromDate);
       if (invToDate) params.set('to_date', invToDate);
-      const res = await fetch(apiUrl(`/api/admin/financial/invoices?${params.toString()}`));
+      const res = await fetch(apiUrl(`/api/admin/financial/invoices?${params.toString()}`), { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setInvoices(data.invoices);
@@ -155,7 +155,7 @@ export default function AdminFinancials() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (userSearch) params.set('search', userSearch);
-      const res = await fetch(apiUrl(`/api/admin/financial/user-summaries?${params.toString()}`));
+      const res = await fetch(apiUrl(`/api/admin/financial/user-summaries?${params.toString()}`), { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setUserSummaries(data.users);
@@ -171,7 +171,7 @@ export default function AdminFinancials() {
     setUserPaymentLoading(true);
     setSelectedUserPayments(userId);
     try {
-      const res = await fetch(apiUrl(`/api/admin/financial/user/${userId}`));
+      const res = await fetch(apiUrl(`/api/admin/financial/user/${userId}`), { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed');
       setUserPaymentData(await res.json());
     } catch (e) {

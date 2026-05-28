@@ -13,6 +13,7 @@ import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import { AdminDashboardSkeleton } from '../../components/ui/Skeletons';
 import { useMasterData } from '../../store/masterDataStore';
+import { useSocketStore } from '../../store/socketStore';
 import { apiUrl } from '../../lib/api';
 
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
@@ -32,6 +33,7 @@ const DATE_PRESETS = [
 export default function AdminAnalytics() {
   const navigate = useNavigate();
   const { admin_settings_kv } = useMasterData();
+  const { socket } = useSocketStore();
   const brandName = admin_settings_kv?.find((s: any) => s.key === 'platform_name')?.value || 'AtMilan';
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -47,7 +49,7 @@ export default function AdminAnalytics() {
       if (fromDate) params.set('from_date', fromDate);
       if (toDate) params.set('to_date', toDate);
       
-      const headers = { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` };
+      const headers = { 'Authorization': `Bearer ${localStorage.getItem('atmilan-token')}` };
       const [statsRes, analyticsRes] = await Promise.all([
         fetch(apiUrl(`/api/admin/stats?${params.toString()}`), { headers }),
         fetch(apiUrl(`/api/admin/financial/analytics?${params.toString()}`), { headers })
@@ -67,6 +69,19 @@ export default function AdminAnalytics() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => fetchData();
+    socket.on('admin:membership-activated', refresh);
+    socket.on('admin:payment-received', refresh);
+    socket.on('admin:new-user', refresh);
+    return () => {
+      socket.off('admin:membership-activated', refresh);
+      socket.off('admin:payment-received', refresh);
+      socket.off('admin:new-user', refresh);
+    };
+  }, [socket, fetchData]);
 
   const formatCurrency = (amount: number) => '₹' + (amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

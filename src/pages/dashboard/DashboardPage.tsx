@@ -83,11 +83,15 @@ export default function DashboardPage() {
     socket.on('interest:updated', handleUpdate);
     socket.on('notification:new', handleUpdate);
     socket.on('profile:viewed', handleUpdate);
+    socket.on('plans:updated', handleUpdate);
+    socket.on('profile:updated', handleUpdate);
     return () => {
       socket.off('interest:new', handleUpdate);
       socket.off('interest:updated', handleUpdate);
       socket.off('notification:new', handleUpdate);
       socket.off('profile:viewed', handleUpdate);
+      socket.off('plans:updated', handleUpdate);
+      socket.off('profile:updated', handleUpdate);
     };
   }, [socket, user?.id]);
 

@@ -15,7 +15,7 @@ import DocumentUploadSection from '../../components/DocumentUploadSection';
 import { apiUrl } from '../../lib/api';
 
 export default function MyProfilePage() {
-  const { user, profile , loading: authLoading} = useAuthStore();
+  const { user, profile , loading: authLoading, refreshProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState('about');
   const [completeProfile, setCompleteProfile] = useState<CompleteProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +66,10 @@ export default function MyProfilePage() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const handleAny = () => fetchCompleteProfile(true);
+    const handleAny = () => {
+      fetchCompleteProfile(true);
+      refreshProfile();
+    };
 
     let registeredSocket: any = null;
     const registerListeners = (socket: any) => {

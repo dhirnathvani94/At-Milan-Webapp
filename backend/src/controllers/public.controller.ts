@@ -198,6 +198,16 @@ export async function submitContact(req: Request, res: Response): Promise<void> 
     (db.contact_messages as ContactMessageRow[]).push(entry);
     await saveTable('contact_messages', db.contact_messages as any[]);
 
+    try {
+      const { emitToAdmin } = await import('../services/socket.service');
+      emitToAdmin('admin:contact-message', {
+        ticket_id: entry.id,
+        name: entry.name,
+        email: entry.email,
+        subject: entry.subject,
+      });
+    } catch {}
+
     // Send email to admin — non-blocking
     const adminEmail = (await getAdminSetting('admin_contact_email')) ||
                        (await getAdminSetting('smtp_from_email'));

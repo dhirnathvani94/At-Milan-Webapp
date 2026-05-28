@@ -12,6 +12,7 @@ import { formatDate } from '../../lib/utils';
 import { updateReportStatus, adminBlockUser } from '../../lib/actions/adminActions';
 import { AdminTableSkeleton } from '../../components/ui/Skeletons';
 import { useMasterData } from '../../store/masterDataStore';
+import { useSocketStore } from '../../store/socketStore';
 import { apiUrl } from '../../lib/api';
 
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
@@ -29,6 +30,7 @@ const DATE_PRESETS = [
 
 export default function AdminReports() {
   const { admin_settings_kv } = useMasterData();
+  const { socket } = useSocketStore();
   const brandName = admin_settings_kv?.find((s: any) => s.key === 'platform_name')?.value || 'AtMilan';
   const [reports, setReports] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -52,7 +54,7 @@ export default function AdminReports() {
       if (toDate) params.set('to_date', toDate);
 
       const res = await fetch(apiUrl(`/api/admin/reports?${params.toString()}`), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('atmilan-token')}` }
       });
       if (!res.ok) throw new Error('Failed to fetch reports');
       const data = await res.json();
@@ -68,6 +70,19 @@ export default function AdminReports() {
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => fetchReports();
+    socket.on('admin:user-reported', refresh);
+    socket.on('admin:message-reported', refresh);
+    socket.on('admin:violation-reported', refresh);
+    return () => {
+      socket.off('admin:user-reported', refresh);
+      socket.off('admin:message-reported', refresh);
+      socket.off('admin:violation-reported', refresh);
+    };
+  }, [socket, fetchReports]);
 
   // Handle Updates
   const handleUpdateStatus = async (reportId: string, status: string) => {
@@ -100,7 +115,7 @@ export default function AdminReports() {
     if (report.type === 'user_report') {
       try {
         const res = await fetch(apiUrl(`/api/admin/user-report/${report.id}`), {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('atmilan-token')}` }
         });
         if (res.ok) {
           const fullReport = await res.json();
