@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1">
+<title>Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f0eb; width: 390px; }
+
+  /* â”€â”€ Navbar â”€â”€ */
+  .navbar { background: #8B1A1A; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .navbar-brand { color: #D4AF37; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+  .navbar-actions { display: flex; gap: 10px; }
+  .nav-btn { background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  /* â”€â”€ Hero â”€â”€ */
+  .hero { background: linear-gradient(135deg, #8B1A1A 0%, #6B1414 100%); padding: 40px 20px 50px; text-align: center; }
+  .hero h1 { color: #D4AF37; font-size: 26px; font-weight: 800; line-height: 1.2; margin-bottom: 10px; }
+  .hero p { color: rgba(255,255,255,0.85); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+  .hero-stats { display: flex; justify-content: center; gap: 24px; }
+  .stat { text-align: center; }
+  .stat-num { color: #D4AF37; font-size: 20px; font-weight: 800; }
+  .stat-label { color: rgba(255,255,255,0.7); font-size: 11px; }
+
+  /* â”€â”€ Search bar â”€â”€ */
+  .search-bar { background: #fff; margin: -20px 16px 0; border-radius: 16px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .search-bar input { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #374151; outline: none; }
+  .search-btn { width: 100%; margin-top: 10px; background: #8B1A1A; color: #fff; border: none; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  /* â”€â”€ Section â”€â”€ */
+  .section { padding: 32px 16px 0; }
+  .section-title { font-size: 18px; font-weight: 800; color: #1a1a1a; margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
+
+  /* â”€â”€ Profile cards â”€â”€ */
+  .profiles-grid { display: flex; flex-direction: column; gap: 12px; }
+  .profile-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); display: flex; align-items: center; padding: 14px; gap: 14px; }
+  .profile-photo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2.5px solid #f3e8e8; flex-shrink: 0; }
+  .profile-info { flex: 1; min-width: 0; }
+  .profile-name { font-size: 15px; font-weight: 700; color: #1a1a1a; }
+  .profile-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .profile-badge { background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-top: 4px; }
+  .profile-action { width: 36px; height: 36px; border-radius: 50%; background: #fef2f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .heart { color: #8B1A1A; font-size: 16px; }
+
+  /* â”€â”€ How it works â”€â”€ */
+  .steps { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+  .step { display: flex; align-items: flex-start; gap: 14px; background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .step-num { width: 36px; height: 36px; border-radius: 50%; background: #8B1A1A; color: #D4AF37; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-title { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+  .step-desc { font-size: 12px; color: #6b7280; margin-top: 2px; line-height: 1.5; }
+
+  /* â”€â”€ Success stories â”€â”€ */
+  .story-card { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 12px; }
+  .story-couple { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .story-photo { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+  .story-names { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+  .story-location { font-size: 11px; color: #6b7280; }
+  .story-text { font-size: 12px; color: #4b5563; line-height: 1.6; font-style: italic; }
+  .stars { color: #f59e0b; font-size: 13px; margin-bottom: 6px; }
+
+  /* â”€â”€ CTA â”€â”€ */
+  .cta { background: linear-gradient(135deg, #8B1A1A, #6B1414); margin: 32px 0 0; padding: 32px 20px; text-align: center; }
+  .cta h2 { color: #D4AF37; font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+  .cta p { color: rgba(255,255,255,0.8); font-size: 13px; margin-bottom: 20px; }
+  .cta-btn { background: #D4AF37; color: #8B1A1A; border: none; border-radius: 12px; padding: 13px 32px; font-size: 15px; font-weight: 800; cursor: pointer; }
+
+  /* â”€â”€ Footer â”€â”€ */
+  .footer { background: #1a0a0a; padding: 24px 20px; text-align: center; }
+  .footer-brand { color: #D4AF37; font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+  .footer-text { color: rgba(255,255,255,0.4); font-size: 11px; }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<div class="navbar">
+  <div class="navbar-brand">AtMilan</div>
+  <div class="navbar-actions">
+    <button class="nav-btn">Login</button>
+    <button class="nav-btn" style="background:#D4AF37;color:#8B1A1A;">Register</button>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>Find Your Perfect Life Partner</h1>
+  <p>Join thousands of happy families who found their match. Verified profiles. Safe &amp; secure.</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">10K+</div><div class="stat-label">Profiles</div></div>
+    <div class="stat"><div class="stat-num">500+</div><div class="stat-label">Marriages</div></div>
+    <div class="stat"><div class="stat-num">98%</div><div class="stat-label">Happy Users</div></div>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="search-bar">
+  <input type="text" placeholder="Search by name, city, education..." />
+  <button class="search-btn">ðŸ” Search Profiles</button>
+</div>
+
+<!-- Profiles -->
+<div class="section" style="margin-top:28px;">
+  <div class="section-title">Recommended Matches</div>
+  <div class="section-sub">Profiles matching your preferences</div>
+  <div class="profiles-grid">
+    <div class="profile-card">
+      <img class="profile-photo" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop" alt="Priya">
+      <div class="profile-info">
+        <div class="profile-name">Priya K., 26</div>
+        <div class="profile-meta">MBA Â· Surat, Gujarat</div>
+        <span class="profile-badge">â­ Premium</span>
+      </div>
+      <div class="profile-action"><span class="heart">â™¥</span></div>
+    </div>
+    <div class="profile-card">
+      <img class="profile-photo" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop" alt="Rahul">
+      <div class="profile-info">
+        <div class="profile-name">Rahul M., 28</div>
+        <div class="profile-meta">M.Tech Â· Ahmedabad, Gujarat</div>
+        <span class="profile-badge">âœ“ Verified</span>
+      </div>
+      <div class="profile-action"><span class="heart">â™¥</span></div>
+    </div>
+    <div class="profile-card">
+      <img class="profile-photo" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop" alt="Neha">
+      <div class="profile-info">
+        <div class="profile-name">Neha S., 27</div>
+        <div class="profile-meta">M.Sc Â· Pune, Maharashtra</div>
+        <span class="profile-badge">âœ“ Verified</span>
+      </div>
+      <div class="profile-action"><span class="heart">â™¥</span></div>
+    </div>
+    <div class="profile-card">
+      <img class="profile-photo" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop" alt="Amit">
+      <div class="profile-info">
+        <div class="profile-name">Amit V., 30</div>
+        <div class="profile-meta">B.E. Â· Mumbai, Maharashtra</div>
+        <span class="profile-badge">â­ Premium</span>
+      </div>
+      <div class="profile-action"><span class="heart">â™¥</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div class="section" style="margin-top:36px;">
+  <div class="section-title">How AtMilan Works</div>
+  <div class="section-sub">Find your match in 4 simple steps</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div><div class="step-title">Register Free</div><div class="step-desc">Create your profile with photos and preferences in just 2 minutes.</div></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div><div class="step-title">Get Verified</div><div class="step-desc">Complete Aadhaar KYC to build trust within the community.</div></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div><div class="step-title">Search Matches</div><div class="step-desc">Use smart filters or let AI recommend compatible profiles.</div></div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div><div class="step-title">Connect &amp; Meet</div><div class="step-desc">Send interests, unlock contacts, and start meaningful conversations.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Stories -->
+<div class="section" style="margin-top:36px;">
+  <div class="section-title">Success Stories</div>
+  <div class="section-sub">Real couples who found love here</div>
+  <div class="story-card">
+    <div class="story-couple">
+      <img class="story-photo" src="https://images.unsplash.com/photo-1544078755-9ebfaac673e5?w=200&h=200&fit=crop" alt="">
+      <div><div class="story-names">Rahul &amp; Priya</div><div class="story-location">Surat, Gujarat Â· 2024</div></div>
+    </div>
+    <div class="stars">â˜…â˜…â˜…â˜…â˜…</div>
+    <div class="story-text">"AtMilan made it so easy to find someone who shares our family values. We chatted for 3 months and knew we were perfect for each other!"</div>
+  </div>
+  <div class="story-card">
+    <div class="story-couple">
+      <img class="story-photo" src="https://images.unsplash.com/photo-1583939000185-1d6d1b6e4e11?w=200&h=200&fit=crop" alt="">
+      <div><div class="story-names">Amit &amp; Sneha</div><div class="story-location">Ahmedabad, Gujarat Â· 2023</div></div>
+    </div>
+    <div class="stars">â˜…â˜…â˜…â˜…â˜…</div>
+    <div class="story-text">"The verified profiles gave us confidence. Best platform for our community!"</div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta">
+  <h2>Start Your Journey Today</h2>
+  <p>Join thousands of families who found their perfect match on AtMilan.</p>
+  <button class="cta-btn">Register Free â†’</button>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-brand">AtMilan</div>
+  <div class="footer-text">Â© 2024 AtMilan. All rights reserved.</div>
+</div>
+
+</body>
+</html>
