@@ -37,17 +37,22 @@ interface UnblockRequestRow {
 export async function reportUser(req: Request, res: Response): Promise<void> {
   try {
     const reporterId = req.user!.id;
-    const { reported_id, reason, details } = req.body as {
-      reported_id: string;
+    const { reported_id, reported_user_id, reason, details, note } = req.body as {
+      reported_id?: string;
+      reported_user_id?: string;
       reason: string;
       details?: string;
+      note?: string;
     };
 
-    if (!reported_id || !reason) {
+    const finalReportedId = reported_id || reported_user_id;
+    const finalDetails = details || note || null;
+
+    if (!finalReportedId || !reason) {
       res.status(400).json({ success: false, error: "reported_id and reason are required." });
       return;
     }
-    if (reporterId === reported_id) {
+    if (reporterId === finalReportedId) {
       res.status(400).json({ success: false, error: "You cannot report yourself." });
       return;
     }
@@ -56,10 +61,10 @@ export async function reportUser(req: Request, res: Response): Promise<void> {
     const report: ReportRow = {
       id: uuidv4(),
       reporter_id: reporterId,
-      reported_id,
+      reported_id: finalReportedId,
       type: "user",
       reason,
-      details: details ?? null,
+      details: finalDetails,
       message_id: null,
       status: "pending",
       created_at: new Date().toISOString(),
@@ -68,12 +73,17 @@ export async function reportUser(req: Request, res: Response): Promise<void> {
     (db.reports as ReportRow[]).push(report);
     await saveTable('reports', db.reports as any[]);
 
-    emitToAdmin("admin:user-reported", { report });
+    try {
+      emitToAdmin("admin:user-reported", { report });
+      // The instruction specifically requested admin:report-received
+      emitToAdmin("admin:report-received", { report });
+    } catch {}
+
     createAuditLog({
       action: "report_submitted",
       actor_id: reporterId,
       resource_type: "user",
-      resource_id: reported_id,
+      resource_id: finalReportedId,
       details: { reason },
       severity: "warning",
     });

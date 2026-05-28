@@ -93,13 +93,22 @@ function filterProfiles(
   filters: SearchFilters,
   excludeUserId: string | null
 ): { results: ProfileRow[]; total: number } {
+  // Only show verified and active users (not admin)
   const activeUserIds = new Set(
     users.filter((u) => u.is_active && u.role !== 'admin').map((u) => u.id)
+  );
+  // Also build verified set from profiles
+  const verifiedUserIds = new Set(
+    (profiles as any[])
+      .filter((p: any) => p.is_verified === true)
+      .map((p: any) => p.user_id)
   );
 
   let results = profiles.filter((p) => {
     // Exclude inactive/deleted users
     if (!activeUserIds.has(p.user_id)) return false;
+    // Exclude unverified profiles from browse results
+    if (!verifiedUserIds.has(p.user_id)) return false;
     // Exclude own profile
     if (excludeUserId && p.user_id === excludeUserId) return false;
 
@@ -252,6 +261,20 @@ export async function searchProfiles(req: Request, res: Response): Promise<void>
       page:           q['page']  ? parseInt(q['page'],  10) : 1,
       limit:          q['limit'] ? parseInt(q['limit'], 10) : 20,
     };
+
+    // Auto-set gender filter from viewer's own profile
+    // Male users see Female profiles, Female users see Male profiles
+    if (!filters.looking_for && !filters.gender && viewerId) {
+      const db = await getDB();
+      const myProfile = (db.profiles as any[]).find(
+        (p: any) => p.user_id === viewerId
+      );
+      if (myProfile?.gender) {
+        const oppositeGender =
+          myProfile.gender.toLowerCase() === 'male' ? 'female' : 'male';
+        filters.looking_for = oppositeGender;
+      }
+    }
 
     // Try Elasticsearch first; fall back to in-memory
     let searchResult = await elasticsearchSearch(filters, viewerId);

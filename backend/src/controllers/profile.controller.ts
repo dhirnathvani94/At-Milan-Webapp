@@ -250,10 +250,34 @@ export async function getMyProfile(req: Request, res: Response): Promise<void> {
              (d as unknown as { type: string }).type === 'photo'
     );
 
+    const isPremiumActive = (db.purchases as any[]).some(
+      (p: any) =>
+        p.user_id === userId &&
+        p.type === 'membership' &&
+        p.status === 'completed' &&
+        p.expires_at &&
+        new Date(p.expires_at) > new Date()
+    );
+    const activePurchase = (db.purchases as any[])
+      .filter(
+        (p: any) =>
+          p.user_id === userId &&
+          p.type === 'membership' &&
+          p.status === 'completed' &&
+          p.expires_at &&
+          new Date(p.expires_at) > new Date()
+      )
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.expires_at).getTime() - new Date(a.expires_at).getTime()
+      )[0] ?? null;
+
     res.status(200).json({
       success: true,
       user: safeUser(user),
-      profile: profile ?? null,
+      profile: profile
+        ? { ...profile, is_premium: isPremiumActive, premium_end: activePurchase?.expires_at ?? null }
+        : null,
       credits: credits ? { balance: credits.balance } : { balance: 0 },
       photos,
     });

@@ -327,8 +327,43 @@ export async function verifyPayment(req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // Idempotency: if this exact payment_id was already processed, return success
+    const alreadyProcessed = purchases.find(
+      (p) =>
+        p.gateway_payment_id === razorpay_payment_id &&
+        p.status === 'completed'
+    );
+    if (alreadyProcessed) {
+      res.status(200).json({
+        success: true,
+        message: 'Payment already verified (idempotent).',
+        purchase: {
+          id:            alreadyProcessed.id,
+          type:          alreadyProcessed.type,
+          amount:        alreadyProcessed.amount,
+          currency:      alreadyProcessed.currency,
+          credits_added: alreadyProcessed.credits_added,
+          expires_at:    alreadyProcessed.expires_at,
+          status:        alreadyProcessed.status,
+        },
+      });
+      return;
+    }
+
     if (purchase.status === 'completed') {
-      res.status(409).json({ success: false, error: 'Payment already verified.' });
+      res.status(200).json({
+        success: true,
+        message: 'Payment already verified.',
+        purchase: {
+          id:            purchase.id,
+          type:          purchase.type,
+          amount:        purchase.amount,
+          currency:      purchase.currency,
+          credits_added: purchase.credits_added,
+          expires_at:    purchase.expires_at,
+          status:        purchase.status,
+        },
+      });
       return;
     }
 
@@ -395,6 +430,24 @@ export async function verifyPayment(req: Request, res: Response): Promise<void> 
       `Your payment of ${purchase.currency} ${purchase.amount} was successful.`,
       { purchase_id: purchase.id, type: purchase.type }
     );
+
+    try {
+      const { emitToUser } = await import('../services/socket.service');
+      if (purchase.type === 'membership') {
+        emitToUser(userId, 'membership:activated', {
+          expires_at: purchase.expires_at,
+          is_premium: true,
+        });
+      } else if (purchase.type === 'credits') {
+        emitToUser(userId, 'credits:updated', {
+          credits_added: purchase.credits_added,
+          type: 'credit',
+          reason: 'credit_purchase',
+        });
+      }
+      // Also send full credits refresh
+      emitToUser(userId, 'credits:updated', {});
+    } catch {}
 
     res.status(200).json({
       success: true,

@@ -36,6 +36,7 @@ export default function CheckoutPage() {
   // duplicate POSTs from double-clicks or network retries — guaranteeing the
   // user is charged at most once per intentional payment action.
   const idempotencyKeyRef = useRef<string>(uuidv4());
+  const processingRef = useRef(false);
 
   useEffect(() => {
     if (!planId || !planType) {
@@ -164,12 +165,18 @@ export default function CheckoutPage() {
           description: `${plan.name} Purchase`,
           image: profile?.profile_photo_url || 'https://via.placeholder.com/150',
           handler: async function (response: any) {
-            // ── STEP 2: Send signature for server-side verification ──
-            await finalizePurchase(
-              response.razorpay_payment_id,
-              isMockOrder ? undefined : response.razorpay_order_id,
-              isMockOrder ? undefined : response.razorpay_signature
-            );
+            if (processingRef.current) return; // already processing
+            processingRef.current = true;
+            try {
+              // ── STEP 2: Send signature for server-side verification ──
+              await finalizePurchase(
+                response.razorpay_payment_id,
+                isMockOrder ? undefined : response.razorpay_order_id,
+                isMockOrder ? undefined : response.razorpay_signature
+              );
+            } finally {
+              // Do NOT reset processingRef — payment should only be verified once
+            }
           },
           prefill: {
             name: `${profile?.first_name} ${profile?.last_name}`,

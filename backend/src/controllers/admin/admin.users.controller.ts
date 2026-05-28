@@ -197,8 +197,33 @@ export async function setPremium(req: Request, res: Response): Promise<void> {
     const purchase = { id:uuidv4(), user_id:userId, type:'membership', plan_id:plan_id??null, amount:0, currency:'INR', credits_added:0, gateway_id:'admin', gateway_order_id:null, gateway_payment_id:null, gateway_signature:null, status:'completed', expires_at:expiresAt, created_at:new Date().toISOString(), updated_at:new Date().toISOString() };
     (db.purchases as unknown[]).push(purchase);
     await saveTable('purchases', db.purchases as any[]);
+
+    // Also update profiles.is_premium for instant real-time effect
+    const profiles = db.profiles as any[];
+    const profIdx = profiles.findIndex((p: any) => p.user_id === userId);
+    if (profIdx !== -1) {
+      profiles[profIdx].is_premium = true;
+      profiles[profIdx].premium_end = expiresAt;
+      profiles[profIdx].updated_at = new Date().toISOString();
+      await saveTable('profiles', db.profiles as any[]);
+    }
+
     createAuditLog({action:'profile_updated',actor_id:adminId,resource_type:'user',resource_id:userId,details:{action:'set_premium',expires_at:expiresAt},severity:'info'});
-    emitToUser(userId,'membership:activated',{expires_at:expiresAt});
+    try {
+      emitToUser(userId, 'membership:activated', {
+        expires_at: expiresAt,
+        is_premium: true,
+      });
+      // Also emit full profile update so MembershipWidget reacts instantly
+      if (profIdx !== -1) {
+        emitToUser(userId, 'profile:updated', {
+          ...profiles[profIdx],
+          is_premium: true,
+          premium_end: expiresAt,
+        });
+      }
+      emitToUser(userId, 'credits:updated', {});
+    } catch {}
     res.status(200).json({ success:true, message:'Premium activated.', expires_at:expiresAt });
   } catch(err) { console.error('[AdminUsers] setPremium error:',err); res.status(500).json({success:false,error:'Could not set premium.'}); }
 }
@@ -213,8 +238,28 @@ export async function removePremium(req: Request, res: Response): Promise<void> 
     if (changed) {
       await saveTable('purchases', db.purchases as any[]);
     }
+
+    const profiles2 = db.profiles as any[];
+    const profIdx2 = profiles2.findIndex((p: any) => p.user_id === userId);
+    if (profIdx2 !== -1) {
+      profiles2[profIdx2].is_premium = false;
+      profiles2[profIdx2].premium_end = null;
+      profiles2[profIdx2].updated_at = new Date().toISOString();
+      await saveTable('profiles', db.profiles as any[]);
+      try {
+        emitToUser(userId, 'profile:updated', {
+          ...profiles2[profIdx2],
+          is_premium: false,
+          premium_end: null,
+        });
+      } catch {}
+    }
+
     createAuditLog({action:'profile_updated',actor_id:adminId,resource_type:'user',resource_id:userId,details:{action:'remove_premium'},severity:'warning'});
-    emitToUser(userId,'membership:deactivated',{});
+    try {
+      emitToUser(userId,'membership:deactivated',{});
+      emitToUser(userId, 'credits:updated', {});
+    } catch {}
     res.status(200).json({ success:true, message:'Premium removed.' });
   } catch(err) { console.error('[AdminUsers] removePremium error:',err); res.status(500).json({success:false,error:'Could not remove premium.'}); }
 }

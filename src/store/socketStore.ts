@@ -243,10 +243,45 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
+    socket.on('account:warning', (data: any) => {
+      window.dispatchEvent(
+        new CustomEvent('account:warning', { detail: data })
+      );
+    });
+
+    socket.on('account:blocked', (_data: any) => {
+      // Admin blocked user — sign them out
+      useAuthStore.getState().signOut();
+    });
+
     // membership:activated — refresh profile + credits after membership purchase
-    socket.on('membership:activated', (_data: any) => {
+    socket.on('membership:activated', (data: any) => {
       const authStore = useAuthStore.getState();
       if (authStore.user) {
+        // Immediately update profile.is_premium in store
+        if (authStore.profile) {
+          authStore.setProfile({
+            ...authStore.profile,
+            is_premium: true,
+            premium_end: data?.expires_at ?? null,
+          });
+        }
+        // Also refresh from server for accuracy
+        authStore.refreshProfile();
+        authStore.refreshCredits();
+      }
+    });
+
+    socket.on('membership:deactivated', (_data: any) => {
+      const authStore = useAuthStore.getState();
+      if (authStore.user) {
+        if (authStore.profile) {
+          authStore.setProfile({
+            ...authStore.profile,
+            is_premium: false,
+            premium_end: null,
+          });
+        }
         authStore.refreshProfile();
         authStore.refreshCredits();
       }
@@ -301,7 +336,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.off("shortlist:updated");
       socket.off("account:verified");
       socket.off("account:status-changed");
+      socket.off('account:warning');
+      socket.off('account:blocked');
       socket.off("membership:activated");
+      socket.off('membership:deactivated');
       socket.off("profile:viewed");
       socket.off("profile:section-updated");
       socket.off("interest:received");
