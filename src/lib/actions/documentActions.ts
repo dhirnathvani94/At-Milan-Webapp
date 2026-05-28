@@ -43,7 +43,9 @@ export async function getPendingVerifications() {
   );
   if (!response.ok) throw new Error('Failed to fetch pending verifications');
   const data = await response.json();
-  return Array.isArray(data) ? data : (data.data || data.documents || []);
+  return Array.isArray(data)
+    ? data
+    : (data.data || data.documents || []);
 }
 
 export async function approveDocument(
