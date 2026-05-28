@@ -391,12 +391,12 @@ export default function AdminDashboard() {
               .slice(0, 8)
               .map((u) => (
                 <Link key={u.id} to={`/admin/users/${u.id}`} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors group">
-                  <Avatar src={u.profile?.profile_photo || ''} fallbackName={`${u.profile?.first_name || ''} ${u.profile?.last_name || ''}`} size="sm" gender={u.profile?.gender || ''} />
+                  <Avatar src={u.profile?.profile_photo} fallbackName={`${u.profile?.first_name} ${u.profile?.last_name}`} size="sm" gender={u.profile?.gender} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
-                      {u.profile?.first_name || ''} {u.profile?.last_name || ''}
+                      {u.profile?.first_name} {u.profile?.last_name}
                     </p>
-                    <p className="text-[11px] text-gray-400">{u.profile?.profile_id || u.id?.slice(0,8) || ''} · {formatDate(u.created_at)}</p>
+                    <p className="text-[11px] text-gray-400">{u.profile?.profile_id} · {formatDate(u.created_at)}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     {u.is_premium && <Crown size={12} className="text-amber-500" />}
