@@ -553,15 +553,60 @@ export async function getProfileComplete(req: Request, res: Response): Promise<v
     const { id } = req.params;
     const viewerId = req.user?.id ?? (req.headers["x-user-id"] as string) ?? null;
     const db = await getDB();
+    
+    // Core profile data
     const profile = (db.profiles as any[]).find(p => p.user_id === id || p.id === id);
     if (!profile) { res.status(404).json({ success: false, error: "Profile not found" }); return; }
-    const education = (db.education_career as any[] || []).find(e => e.user_id === id);
-    const family = (db.family_details as any[] || []).find(f => f.user_id === id);
-    const lifestyle = (db.lifestyle as any[] || []).find(l => l.user_id === id);
-    const horoscope = (db.horoscope_details as any[] || []).find(h => h.user_id === id);
-    const preferences = (db.partner_preferences as any[] || []).find(p => p.user_id === id);
-    const photos = (db.profile_photos as any[] || []).filter(p => p.user_id === id);
-    res.json({ success: true, profile, education, family, lifestyle, horoscope, preferences, photos });
+    
+    const userId = profile.user_id;
+    const education = (db.education_career as any[] || []).find(e => e.user_id === userId);
+    const family = (db.family_details as any[] || []).find(f => f.user_id === userId);
+    const lifestyle = (db.lifestyle as any[] || []).find(l => l.user_id === userId);
+    const horoscope = (db.horoscope_details as any[] || []).find(h => h.user_id === userId);
+    const preferences = (db.partner_preferences as any[] || []).find(p => p.user_id === userId);
+    const photos = (db.profile_photos as any[] || []).filter(p => p.user_id === userId);
+    
+    // Additional data expected by Admin UI
+    const documents = (db.documents as any[] || []).filter(d => d.user_id === userId);
+    const credits = (db.credits as any[] || []).find(c => c.user_id === userId);
+    const purchases = (db.purchases as any[] || []).filter(p => p.user_id === userId);
+    const membership_purchases = purchases.filter(p => p.type === 'membership');
+    
+    const reports = (db.reports as any[] || []);
+    const reports_received = reports.filter(r => r.reported_id === userId);
+    const user_reports_received = reports.filter(r => r.reported_id === userId && r.report_type === 'user');
+    const user_reports_sent = reports.filter(r => r.reporter_id === userId && r.report_type === 'user');
+    const message_reports = reports.filter(r => r.reported_id === userId && r.report_type === 'message');
+    
+    const chat_warnings = (db.audit_logs as any[] || []).filter(a => a.user_id === userId && a.action === 'chat_warning');
+    const deleted_messages = (db.messages as any[] || []).filter(m => m.sender_id === userId && m.is_deleted);
+    
+    const interests = (db.interests as any[] || []);
+    const interests_sent = interests.filter(i => i.sender_id === userId);
+    const interests_received = interests.filter(i => i.receiver_id === userId);
+
+    res.json({ 
+      success: true, 
+      profile, 
+      education, 
+      family, 
+      lifestyle, 
+      horoscope, 
+      preferences, 
+      photos,
+      documents,
+      credits,
+      purchases,
+      membership_purchases,
+      reports_received,
+      user_reports_received,
+      user_reports_sent,
+      message_reports,
+      chat_warnings,
+      deleted_messages,
+      interests_sent,
+      interests_received
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -673,7 +718,8 @@ export async function uploadDocument(req: Request, res: Response): Promise<void>
 
     try {
       const userId = req.user!.id;
-      const docType = (req.body as { doc_type?: string }).doc_type ?? 'other';
+      const body = req.body as { doc_type?: string, documentType?: string };
+      const docType = body.doc_type || body.documentType || 'other';
       const db = await getDB();
 
       // Upload to Supabase Storage so files survive redeploys
@@ -716,6 +762,7 @@ export async function uploadDocument(req: Request, res: Response): Promise<void>
         url: docUrl,
         file_url: docUrl,
         file_type: docFileType,
+        mime_type: docFileType,
         document_type: docType,
         status: 'pending',
         verification_status: 'pending',
