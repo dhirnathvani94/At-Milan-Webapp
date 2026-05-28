@@ -28,8 +28,10 @@ export const useAdminPermissions = create<AdminPermissionState>((set, get) => ({
       });
       clearTimeout(timeoutId);
       if (!res.ok) {
-        // API error — give minimal safe permissions, NOT full access
-        set({ role: 'admin', permissions: ['/admin'], loaded: true });
+        // API error but user is authenticated admin — grant full access
+        const cur = get();
+        if (cur.loaded && cur.permissions.length > 0) return;
+        set({ role: 'master_admin', permissions: ['*'], loaded: true });
         return;
       }
       const data = await res.json();

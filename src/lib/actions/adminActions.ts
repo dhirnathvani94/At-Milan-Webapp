@@ -233,7 +233,8 @@ export async function reopenContactTicket(id: string) {
 export async function getPendingVerifications() {
   const response = await apiFetch(`/api/verification/pending?_t=${Date.now()}`, { cache: 'no-store' });
   if (!response.ok) throw new Error('Failed to fetch pending verifications');
-  return await response.json();
+  const data = await response.json();
+  return data.data || data.documents || [];
 }
 
 export async function approveDocument(docId: string, adminId: string) {
@@ -636,7 +637,8 @@ export async function getVerifiedUsers(search?: string) {
     params.set('_t', String(Date.now()));
     const response = await apiFetch(`/api/verification/verified-users?${params.toString()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('Failed to fetch verified users');
-    return await response.json();
+    const data = await response.json();
+    return data.data || data.users || [];
   } catch (error) {
     console.error('Verified users error:', error);
     return [];

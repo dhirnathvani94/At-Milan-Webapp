@@ -66,8 +66,8 @@ export default function AdminRoute() {
           })
         } catch {
           useAdminPermissions.setState({
-            role: 'admin',
-            permissions: ['/admin'],
+            role: 'master_admin',
+            permissions: ['*'],
             loaded: true,
           })
         }

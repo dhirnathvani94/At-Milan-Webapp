@@ -135,10 +135,13 @@ export default function AdminDashboard() {
       ]);
       setStats(statsRes);
       setRecentUsers(usersRes.users);
-      setPendingDocs(docsRes);
+      const docsArray = Array.isArray(docsRes)
+        ? docsRes
+        : (docsRes?.data || docsRes?.documents || []);
+      setPendingDocs(docsArray);
       setFinancialData(finRes);
       
-      const groupedDocs = docsRes.reduce((acc: any, doc: any) => {
+      const groupedDocs = docsArray.reduce((acc: any, doc: any) => {
         if (!acc[doc.user_id]) {
           acc[doc.user_id] = {
             user_id: doc.user_id,

@@ -53,7 +53,7 @@ const EMPTY_FORM = {
 };
 
 export default function AdminPaymentGateways() {
-  const { profile } = useAuthStore();
+  const { profile, user } = useAuthStore();
   const [gateways, setGateways] = useState<PaymentGateway[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -173,7 +173,9 @@ export default function AdminPaymentGateways() {
 
   const activeGateway = gateways.find(g => g.is_active);
 
-  if (profile?.role !== 'admin') return <p>Access denied.</p>;
+  if (user?.role !== 'admin' && profile?.role !== 'admin') {
+    return <p>Access denied.</p>;
+  }
 
   return (
     <div className="space-y-6">
