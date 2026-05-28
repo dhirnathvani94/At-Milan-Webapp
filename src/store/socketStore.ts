@@ -318,9 +318,37 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       );
     });
 
-    // ── Settings change → refresh master data ─────────────────────────────
-    socket.on('settings:updated', (_data: any) => {
-      useMasterData.getState().refetchMasterData();
+    // ── White label settings real-time ────────────────────────────────────
+    // When admin saves any setting from admin panel, update store instantly
+    socket.on('settings:updated', ({ key, value }: { key: string; value: string }) => {
+      try {
+        const current = useMasterData.getState().admin_settings_kv;
+        if (!Array.isArray(current)) return;
+        const idx = current.findIndex((s: any) => s.key === key);
+        let updated: any[];
+        if (idx >= 0) {
+          updated = [...current];
+          updated[idx] = { ...updated[idx], key, value };
+        } else {
+          updated = [...current, { key, value, setting_type: 'text' }];
+        }
+        useMasterData.setState({ admin_settings_kv: updated });
+
+        // If platform_name or site_title changed, sync both keys
+        if (key === 'platform_name' || key === 'site_title') {
+          const syncIdx = updated.findIndex(
+            (s: any) => s.key === (key === 'platform_name' ? 'site_title' : 'platform_name')
+          );
+          if (syncIdx >= 0) {
+            const synced = [...updated];
+            synced[syncIdx] = { ...synced[syncIdx], value };
+            useMasterData.setState({ admin_settings_kv: synced });
+          }
+        }
+      } catch (err) {
+        // Non-fatal: settings update failed, will sync on next page load
+        console.warn('[Socket] settings:updated handler error:', err);
+      }
     });
 
 
