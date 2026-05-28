@@ -58,19 +58,28 @@ export async function getPendingVerifications(req: Request, res: Response): Prom
 
     // Enrich with user info
     const profiles = db.profiles as ProfileRow[];
-    const users2 = db.users as any[];
+    const dbUsers = db.users as any[];
     const enriched = data.map((d: any) => {
-      const profile = profiles.find((p: any) => p.user_id === d.user_id) ?? null;
-      const userRow = users2.find((u: any) => u.id === d.user_id) ?? null;
+      const profile = profiles.find(
+        (p: any) => p.user_id === d.user_id
+      ) ?? null;
+      const userRow = dbUsers.find(
+        (u: any) => u.id === d.user_id
+      ) ?? null;
+      const fileUrl = d.file_url || d.url || '';
+      const mimeType = d.file_type ||
+        (fileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image/jpeg' :
+         fileUrl.match(/\.pdf$/i) ? 'application/pdf' :
+         'image/jpeg');
       return {
         ...d,
-        // Add all field aliases frontend expects
         profile,
         user: profile,
-        file_url: d.url,
-        document_type: d.type,
-        uploaded_at: d.created_at,
-        verification_status: d.status,
+        file_url: fileUrl,
+        file_type: mimeType,
+        document_type: d.document_type || d.type,
+        uploaded_at: d.uploaded_at || d.created_at,
+        verification_status: d.verification_status || d.status,
         email: (userRow as any)?.email ?? null,
       };
     });
@@ -109,18 +118,28 @@ export async function getAllVerifications(req: Request, res: Response): Promise<
     const data       = docs.slice((page - 1) * limit, page * limit);
 
     const profiles = db.profiles as ProfileRow[];
-    const users3 = db.users as any[];
+    const dbUsers2 = db.users as any[];
     const enriched = data.map((d: any) => {
-      const profile = profiles.find((p: any) => p.user_id === d.user_id) ?? null;
-      const userRow = users3.find((u: any) => u.id === d.user_id) ?? null;
+      const profile = profiles.find(
+        (p: any) => p.user_id === d.user_id
+      ) ?? null;
+      const userRow = dbUsers2.find(
+        (u: any) => u.id === d.user_id
+      ) ?? null;
+      const fileUrl = d.file_url || d.url || '';
+      const mimeType = d.file_type ||
+        (fileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image/jpeg' :
+         fileUrl.match(/\.pdf$/i) ? 'application/pdf' :
+         'image/jpeg');
       return {
         ...d,
         profile,
         user: profile,
-        file_url: d.url,
-        document_type: d.type,
-        uploaded_at: d.created_at,
-        verification_status: d.status,
+        file_url: fileUrl,
+        file_type: mimeType,
+        document_type: d.document_type || d.type,
+        uploaded_at: d.uploaded_at || d.created_at,
+        verification_status: d.verification_status || d.status,
         email: (userRow as any)?.email ?? null,
       };
     });

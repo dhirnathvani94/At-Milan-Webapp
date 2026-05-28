@@ -676,42 +676,50 @@ export async function uploadDocument(req: Request, res: Response): Promise<void>
       const docType = (req.body as { doc_type?: string }).doc_type ?? 'other';
       const db = await getDB();
 
-      // ── Upload to Supabase Storage (permanent) ──────────────────────────────
-      const fileBuffer = fs.readFileSync(req.file.path);
-      const ext = path.extname(req.file.originalname).toLowerCase();
-      const fileName = `${uuidv4()}${ext}`;
+      // Upload to Supabase Storage so files survive redeploys
+      let docUrl = `/uploads/documents/${req.file.filename}`;
+      let docFileType = req.file.mimetype || 'application/octet-stream';
 
-      const { error: storageError } = await supabaseAdmin
-        .storage
-        .from('user-documents')
-        .upload(`docs/${fileName}`, fileBuffer, {
-          contentType: req.file.mimetype,
-          upsert: false,
-        });
+      try {
+        const fileBuffer = require('fs').readFileSync(req.file.path);
+        const ext = require('path').extname(req.file.originalname || req.file.filename).toLowerCase();
+        const storageName = `${uuidv4()}${ext}`;
 
-      // Remove the multer temp file regardless of outcome
-      try { fs.unlinkSync(req.file.path); } catch {}
+        const { data: storageData, error: storageError } = await supabaseAdmin
+          .storage
+          .from('user-documents')
+          .upload(`documents/${storageName}`, fileBuffer, {
+            contentType: docFileType,
+            upsert: false,
+          });
 
-      if (storageError) {
-        console.error('[Profile] uploadDocument storage error:', storageError.message);
-        res.status(500).json({ success: false, error: 'Failed to upload document to storage.' });
-        return;
+        if (!storageError) {
+          const { data: urlData } = supabaseAdmin
+            .storage
+            .from('user-documents')
+            .getPublicUrl(`documents/${storageName}`);
+          docUrl = urlData.publicUrl;
+        }
+
+        // Delete temp local file
+        try { require('fs').unlinkSync(req.file.path); } catch {}
+      } catch (storageErr: any) {
+        console.error('[Profile] Storage upload failed, using local:', storageErr.message);
+        // Keep local URL as fallback if Supabase Storage fails
       }
-
-      const { data: urlData } = supabaseAdmin
-        .storage
-        .from('user-documents')
-        .getPublicUrl(`docs/${fileName}`);
-
-      const docUrl = urlData.publicUrl;
 
       const doc = {
         id: uuidv4(),
         user_id: userId,
         type: docType,
-        filename: fileName,
+        filename: req.file.filename,
         url: docUrl,
+        file_url: docUrl,
+        file_type: docFileType,
+        document_type: docType,
         status: 'pending',
+        verification_status: 'pending',
+        uploaded_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       };
 
