@@ -40,8 +40,8 @@ export default function AdminVerificationPage() {
 
   const { socket } = useSocketStore();
   // Stable refs — always point to latest fetch functions
-  const pendingRef = useRef<(showLoading?: boolean) => void>(() => {});
-  const verifiedRef = useRef<(showLoading?: boolean) => void>(() => {});
+  const pendingRef = useRef<(showLoading?: boolean) => void>(() => { });
+  const verifiedRef = useRef<(showLoading?: boolean) => void>(() => { });
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
   // Keep searchTerm in a ref so polling/socket handlers always use the latest value
@@ -88,13 +88,13 @@ export default function AdminVerificationPage() {
     const refreshVerified = () => { if (activeTabRef.current === 'verified') verifiedRef.current(); };
 
     const events: [string, () => void][] = [
-      ['admin:doc-uploaded',       refreshPending],
+      ['admin:doc-uploaded', refreshPending],
       ['admin:doc-status-changed', refreshBoth],
-      ['admin:user-registered',    refreshPending],
-      ['admin:profile-updated',    refreshBoth],
-      ['admin:interest-sent',      refreshVerified],
-      ['admin:user-reported',      refreshBoth],
-      ['admin:user-blocked',       refreshBoth],
+      ['admin:user-registered', refreshPending],
+      ['admin:profile-updated', refreshBoth],
+      ['admin:interest-sent', refreshVerified],
+      ['admin:user-reported', refreshBoth],
+      ['admin:user-blocked', refreshBoth],
     ];
 
     events.forEach(([evt, handler]) => socket.on(evt, handler));
@@ -590,11 +590,10 @@ export default function AdminVerificationPage() {
                 <div className="md:col-span-4 p-5 max-h-[75vh] overflow-y-auto">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {selectedUserDocs.documents.map((doc) => (
-                      <div key={doc.id} className={`rounded-xl border-2 overflow-hidden transition-all ${
-                        doc.verification_status === 'approved' ? 'border-emerald-200 bg-emerald-50/20' :
-                        doc.verification_status === 'rejected' ? 'border-red-200 bg-red-50/20' :
-                        'border-amber-200 bg-amber-50/20'
-                      }`}>
+                      <div key={doc.id} className={`rounded-xl border-2 overflow-hidden transition-all ${doc.verification_status === 'approved' ? 'border-emerald-200 bg-emerald-50/20' :
+                          doc.verification_status === 'rejected' ? 'border-red-200 bg-red-50/20' :
+                            'border-amber-200 bg-amber-50/20'
+                        }`}>
                         {/* Document Header */}
                         <div className="flex items-center justify-between px-4 py-2.5 bg-white/80 border-b border-gray-100">
                           <div className="flex items-center gap-2">

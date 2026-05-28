@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Users, UserCheck, ShieldCheck, Crown, 
-  Clock, Flag, Heart, CheckCircle, 
+import {
+  Users, UserCheck, ShieldCheck, Crown,
+  Clock, Flag, Heart, CheckCircle,
   ChevronRight, ExternalLink, ThumbsUp, ThumbsDown,
   CreditCard, MessageSquare, Settings, Eye, FileText,
   TrendingUp, Activity, ArrowRight, DollarSign, Database,
@@ -12,9 +12,9 @@ import {
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useSocketStore } from '../../store/socketStore';
-import { 
-  getAdminStats, 
-  getAdminUsers, 
+import {
+  getAdminStats,
+  getAdminUsers,
   getPendingVerifications,
   approveDocument,
   rejectDocument,
@@ -66,7 +66,7 @@ export default function AdminDashboard() {
 
   const { socket } = useSocketStore();
   // Stable ref — always points to the latest fetchDashboardData without re-binding socket handlers
-  const fetchRef = useRef<(showLoading?: boolean) => void>(() => {});
+  const fetchRef = useRef<(showLoading?: boolean) => void>(() => { });
 
   useEffect(() => {
     fetchDashboardData(true);
@@ -90,24 +90,24 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    const handleNewUser  = (data: any) => { toast.success(`New user registered: ${data?.first_name} ${data?.last_name}`); fetchRef.current(); };
-    const handleAny      = () => fetchRef.current();
+    const handleNewUser = (data: any) => { toast.success(`New user registered: ${data?.first_name} ${data?.last_name}`); fetchRef.current(); };
+    const handleAny = () => fetchRef.current();
     const handleReported = (data: any) => { toast.error(`User reported: ${data?.reason}`); fetchRef.current(); };
 
     const events: [string, (...args: any[]) => void][] = [
-      ['admin:new-user',          handleNewUser],
-      ['admin:doc-uploaded',      handleAny],
-      ['admin:doc-status-changed',handleAny],
-      ['admin:profile-updated',   handleAny],
-      ['admin:user-deleted',      handleAny],
-      ['admin:unblock-request',   handleAny],
-      ['admin:interest-sent',     handleAny],
-      ['admin:interest-updated',  handleAny],
-      ['admin:message-sent',      handleAny],
-      ['admin:user-reported',     handleReported],
-      ['admin:message-reported',  handleAny],
-      ['admin:user-blocked',      handleAny],
-      ['admin:user-unblocked',    handleAny],
+      ['admin:new-user', handleNewUser],
+      ['admin:doc-uploaded', handleAny],
+      ['admin:doc-status-changed', handleAny],
+      ['admin:profile-updated', handleAny],
+      ['admin:user-deleted', handleAny],
+      ['admin:unblock-request', handleAny],
+      ['admin:interest-sent', handleAny],
+      ['admin:interest-updated', handleAny],
+      ['admin:message-sent', handleAny],
+      ['admin:user-reported', handleReported],
+      ['admin:message-reported', handleAny],
+      ['admin:user-blocked', handleAny],
+      ['admin:user-unblocked', handleAny],
     ];
 
     if (!socket) return;
@@ -135,12 +135,10 @@ export default function AdminDashboard() {
       ]);
       setStats(statsRes);
       setRecentUsers(usersRes.users);
-      const docsArray = Array.isArray(docsRes)
-        ? docsRes
-        : (docsRes?.data || docsRes?.documents || []);
       setPendingDocs(docsArray);
       setFinancialData(finRes);
-      
+
+      const docsArray = Array.isArray(docsRes) ? docsRes : (docsRes?.data || docsRes?.documents || []);
       const groupedDocs = docsArray.reduce((acc: any, doc: any) => {
         if (!acc[doc.user_id]) {
           acc[doc.user_id] = {
@@ -312,7 +310,7 @@ export default function AdminDashboard() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* User Breakdown & Revenue Chart */}
         <Card className="p-6 border-none shadow-sm lg:col-span-1">
           <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -396,7 +394,7 @@ export default function AdminDashboard() {
                     <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
                       {u.profile?.first_name || ''} {u.profile?.last_name || ''}
                     </p>
-                    <p className="text-[11px] text-gray-400">{u.profile?.profile_id || u.id?.slice(0,8) || ''} · {formatDate(u.created_at)}</p>
+                    <p className="text-[11px] text-gray-400">{u.profile?.profile_id || u.id?.slice(0, 8) || ''} · {formatDate(u.created_at)}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     {u.is_premium && <Crown size={12} className="text-amber-500" />}
@@ -422,8 +420,8 @@ export default function AdminDashboard() {
             {groupedPendingDocs.length > 0 ? (
               groupedPendingDocs.slice(0, 5).map((group) => (
                 <div key={group.user_id} className="flex items-center gap-3 p-2.5 bg-orange-50/50 rounded-xl border border-orange-100/50 group">
-                  <Avatar 
-                    src={group.profile?.profile_photo_url} 
+                  <Avatar
+                    src={group.profile?.profile_photo_url}
                     fallbackName={`${group.profile?.first_name} ${group.profile?.last_name}`}
                     size="sm"
                     gender={group.profile?.gender}
