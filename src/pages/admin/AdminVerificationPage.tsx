@@ -110,8 +110,11 @@ export default function AdminVerificationPage() {
   const fetchPendingDocs = async (showLoading = false) => {
     try {
       if (showLoading) setLoading(true);
-      const docs = await getPendingVerifications();
-      setDocuments(Array.isArray(docs) ? docs : (docs?.data || docs?.documents || []));
+      const raw = await getPendingVerifications();
+      const docs = Array.isArray(raw)
+        ? raw
+        : (raw?.data || raw?.documents || []);
+      setDocuments(docs);
     } catch (error) {
       console.error('Error fetching pending verifications:', error);
       toast.error('Failed to load pending verifications');

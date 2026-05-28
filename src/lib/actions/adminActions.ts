@@ -644,8 +644,8 @@ export async function getVerifiedUsers(search?: string) {
     params.set('_t', String(Date.now()));
     const response = await apiFetch(`/api/verification/verified-users?${params.toString()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('Failed to fetch verified users');
-    const data = await response.json();
-    return Array.isArray(data) ? data : (data.data || data.users || []);
+    const d = await response.json();
+    return Array.isArray(d) ? d : (d.data || d.users || []);
   } catch (error) {
     console.error('Verified users error:', error);
     return [];
@@ -661,8 +661,8 @@ export async function getAllVerificationDocs(status?: string, search?: string) {
 
     const response = await apiFetch(`/api/verification/all?${params.toString()}`, { cache: 'no-store' });
     if (!response.ok) return [];
-    const data = await response.json();
-    return Array.isArray(data) ? data : (data.data || data.documents || []);
+    const d = await response.json();
+    return Array.isArray(d) ? d : (d.data || d.documents || []);
   } catch {
     return [];
   }

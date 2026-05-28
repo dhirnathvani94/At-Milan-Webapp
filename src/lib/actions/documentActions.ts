@@ -9,28 +9,30 @@ export async function getVerificationStatus(userId: string) {
   const data = await response.json();
   const docs = data?.documents || data || [];
   const arr = Array.isArray(docs) ? docs : [];
-
-  const front   = arr.find((d: any) =>
-    (d.document_type || d.type) === 'aadhaar_front') || null;
-  const back    = arr.find((d: any) =>
-    (d.document_type || d.type) === 'aadhaar_back') || null;
-  const biodata = arr.find((d: any) =>
-    (d.document_type || d.type) === 'biodata') || null;
-
+  const front = arr.find(
+    (d: any) => (d.document_type || d.type) === 'aadhaar_front'
+  ) || null;
+  const back = arr.find(
+    (d: any) => (d.document_type || d.type) === 'aadhaar_back'
+  ) || null;
+  const biodata = arr.find(
+    (d: any) => (d.document_type || d.type) === 'biodata'
+  ) || null;
   const isFullyVerified =
-    (front?.verification_status  || front?.status)  === 'approved' &&
-    (back?.verification_status   || back?.status)   === 'approved';
-
+    (front?.verification_status || front?.status) === 'approved' &&
+    (back?.verification_status  || back?.status)  === 'approved';
   return {
-    aadhaar_front:  front,
-    aadhaar_back:   back,
+    aadhaar_front: front,
+    aadhaar_back: back,
     biodata,
     isFullyVerified,
-    hasUploaded:    !!(front || back),
-    hasPending:     arr.some((d: any) =>
-      (d.verification_status || d.status) === 'pending'),
-    hasRejected:    arr.some((d: any) =>
-      (d.verification_status || d.status) === 'rejected'),
+    hasUploaded: !!(front || back),
+    hasPending: arr.some(
+      (d: any) => (d.verification_status || d.status) === 'pending'
+    ),
+    hasRejected: arr.some(
+      (d: any) => (d.verification_status || d.status) === 'rejected'
+    ),
   };
 }
 
