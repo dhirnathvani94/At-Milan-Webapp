@@ -13,8 +13,6 @@ export default defineConfig({
         'Firefox >= 75',
       ],
       additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
-      renderLegacyChunks: true,
-      modernPolyfills: true,
     }),
   ],
   resolve: {
